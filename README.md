@@ -134,7 +134,7 @@ Embedding dimension trades off recall against storage cost and latency. A larger
 
 ## Namespaces & multi-tenancy
 
-Every write/read takes a `namespace`. dynavec tags each vector with its namespace and scopes queries to it automatically, so a single index can host many tenants (or many embedding "collections") with clean isolation. DynamoDB keys are `"{namespace}#{id}"` for even partition distribution.
+Every write/read takes a `namespace`. dynavec tags each vector with its namespace and scopes queries to it automatically, so a single index can host many tenants (or many embedding "collections") with clean isolation. DynamoDB keys use escaped `"{namespace}#{id}"` components for even partition distribution, so `#` in namespaces, document IDs, and graph entity IDs remains unambiguous.
 
 ---
 
