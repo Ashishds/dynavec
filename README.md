@@ -239,6 +239,43 @@ python -m benchmarks.run_benchmark --backend dynavec \
 
 ---
 
+## Observability dashboard
+
+A native, in-your-brand **observability dashboard** — a Langfuse-style view of
+**real** query telemetry (no simulated data). Attach a recorder and every search
+is captured with latency, cache outcome, result count, and score stats.
+
+![dynavec observability dashboard](docs/assets/dashboard.png)
+
+**▶ [Live interactive preview](https://codeforstartups.github.io/dynavec/dashboard/)** — built with the landing-page theme, zero build step (vanilla JS + inline SVG charts).
+
+Run it locally on real data (no AWS needed — real searches against in-memory stand-ins):
+
+```bash
+python examples/dashboard_demo.py     # then open http://127.0.0.1:8779
+```
+
+Wire it into your own app:
+
+```python
+from dynavec import Dynavec, DynavecConfig, SemanticCache
+from dynavec.telemetry import TelemetryRecorder
+from dynavec.dashboard import serve
+
+rec = TelemetryRecorder()
+db = Dynavec(cfg, embedder=emb, cache=SemanticCache(), telemetry=rec)
+# ... your app runs searches; the recorder fills automatically ...
+serve(rec, port=8779)
+```
+
+It shows a query-volume histogram, latency percentiles (p50/p95/p99), cache
+hit-rate, and a filterable **traces** table with per-trace drill-down.
+**Contributors welcome:** the Evaluation (recall@k, faithfulness), Resource
+(buckets/indexes/namespaces), and Cost panels are open under the
+[dashboard epic (#122)](https://github.com/codeforstartups/dynavec/issues/122).
+
+---
+
 ## Capabilities
 
 | Area | What you get | API |

@@ -25,6 +25,7 @@ rewrite. (A native asyncio client is on the roadmap.)
 
 from __future__ import annotations
 
+import time
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Any, Union
@@ -70,6 +71,7 @@ class Dynavec:
         boto_session=None,
         transform=None,
         cache=None,
+        telemetry=None,
     ) -> None:
         self.config = config
         self.embedder = embedder
@@ -78,6 +80,7 @@ class Dynavec:
         self._docs = DynamoDBStore(config, boto_session=self._session)
         self._default_transform = as_pipeline(transform)
         self._cache = cache
+        self._telemetry = telemetry
         self._graph_store: GraphStore | None = None
         self._pool: ThreadPoolExecutor | None = None
 
@@ -312,25 +315,55 @@ class Dynavec:
         If a cache is configured, repeated/similar queries are served from it
         (set ``use_cache=False`` to force a fresh search).
         """
-        query_vector = self._resolve_query_vector(query, vector)
+        t0 = time.perf_counter()
+        tel = self._telemetry
+        try:
+            query_vector = self._resolve_query_vector(query, vector)
 
-        # cache key includes ranking options so different ranking != same entry
-        cache_on = self._cache is not None if use_cache is None else use_cache
-        cache_filter = None
-        if cache_on and self._cache is not None:
-            cache_filter = {
-                **(filter or {}),
-                "__rank": {
-                    "rescore": rescore,
-                    "rerank": rerank,
-                    "mmr": mmr_lambda,
-                    "normalize_scores": normalize_scores,
-                },
-            }
-            cached = self._cache.get(namespace, query_vector, top_k, cache_filter)
-            if cached is not None:
-                return cached
+            # cache key includes ranking options so different ranking != same entry
+            cache_on = self._cache is not None if use_cache is None else use_cache
+            cache_filter = None
+            if cache_on and self._cache is not None:
+                cache_filter = {
+                    **(filter or {}),
+                    "__rank": {
+                        "rescore": rescore,
+                        "rerank": rerank,
+                        "mmr": mmr_lambda,
+                        "normalize_scores": normalize_scores,
+                    },
+                }
+                cached = self._cache.get(namespace, query_vector, top_k, cache_filter)
+                if cached is not None:
+                    self._record_search(tel, t0, namespace, top_k, cached, True,
+                                        filter, rescore, rerank, query)
+                    return cached
 
+            results = self._search_core(
+                query_vector, top_k, namespace, filter, rescore, rerank,
+                mmr_lambda, include_vectors, normalize_scores,
+            )
+
+            if cache_on and self._cache is not None and results:
+                self._cache.put(namespace, query_vector, top_k, cache_filter, results)
+            self._record_search(tel, t0, namespace, top_k, results,
+                                (False if cache_on else None),
+                                filter, rescore, rerank, query)
+            return results
+        except Exception as exc:  # noqa: BLE001 - record then re-raise
+            if tel is not None:
+                tel.record(tel.new_event(
+                    "search", namespace=namespace, top_k=top_k,
+                    latency_ms=round((time.perf_counter() - t0) * 1000, 3),
+                    status="error", error=str(exc)[:200], filtered=bool(filter),
+                    rescore=self._rescore_label(rescore), rerank=rerank,
+                ))
+            raise
+
+    def _search_core(
+        self, query_vector, top_k, namespace, filter, rescore, rerank,
+        mmr_lambda, include_vectors, normalize_scores,
+    ) -> list[SearchResult]:
         needs_vectors = rerank == "mmr" or rescore is not None or include_vectors
         fetch_k = top_k * self.config.over_fetch if (rerank or rescore) else top_k
 
@@ -386,9 +419,33 @@ class Dynavec:
             for r in results:
                 r.vector = None
 
-        if cache_on and self._cache is not None and results:
-            self._cache.put(namespace, query_vector, top_k, cache_filter, results)
         return results
+
+    @staticmethod
+    def _rescore_label(rescore: RescoreSpec | None) -> str | None:
+        if rescore is None:
+            return None
+        return rescore if isinstance(rescore, str) else "composite"
+
+    def _record_search(self, tel, t0, namespace, top_k, results, cache_hit,
+                       filter, rescore, rerank, query) -> None:
+        if tel is None:
+            return
+        scores = [r.score for r in results] if results else []
+        tel.record(tel.new_event(
+            "search",
+            namespace=namespace,
+            top_k=top_k,
+            latency_ms=round((time.perf_counter() - t0) * 1000, 3),
+            n_results=len(results),
+            cache_hit=cache_hit,
+            filtered=bool(filter),
+            rescore=self._rescore_label(rescore),
+            rerank=rerank,
+            score_top=round(max(scores), 4) if scores else None,
+            score_mean=round(sum(scores) / len(scores), 4) if scores else None,
+            query_preview=(query[:80] if (query and tel.capture_text) else None),
+        ))
 
     def _apply_rescore(
         self, query_vector: list[float], results: list[SearchResult], spec: RescoreSpec

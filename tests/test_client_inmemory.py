@@ -422,3 +422,35 @@ def test_reserved_key_separator_is_escaped_before_writes(db):
 
     assert list(db._vectors._store) == ["tenant%23one#doc%23one"]
     assert db._docs._store[("tenant#one", "doc#one")]["text"] is None
+
+
+def test_search_records_telemetry(db):
+    from dynavec.telemetry import TelemetryRecorder
+
+    rec = TelemetryRecorder()
+    db._telemetry = rec
+    db.upsert([Document(id="1", text="apple pie"), Document(id="2", text="rocket")])
+    db.search("apple", top_k=2, namespace="default")
+    evs = rec.events()
+    assert len(evs) == 1
+    e = evs[0]
+    assert e.op == "search"
+    assert e.namespace == "default"
+    assert e.n_results >= 1
+    assert e.latency_ms >= 0
+    assert e.status == "ok"
+    assert e.cache_hit is None  # no cache configured
+
+
+def test_search_telemetry_marks_cache_hit(db):
+    from dynavec.cache import SemanticCache
+    from dynavec.telemetry import TelemetryRecorder
+
+    rec = TelemetryRecorder()
+    db._telemetry = rec
+    db._cache = SemanticCache(threshold=0.99)
+    db.upsert([Document(id="1", text="apple pie")])
+    db.search("apple pie", top_k=3)   # miss -> populates cache
+    db.search("apple pie", top_k=3)   # hit
+    hits = [e.cache_hit for e in rec.events()]
+    assert True in hits and False in hits
