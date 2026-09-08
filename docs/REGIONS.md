@@ -55,10 +55,11 @@ You can configure the target AWS region in several ways:
 from dynavec import Dynavec, DynavecConfig
 
 config = DynavecConfig(
-    region_name="us-east-1",  # or any supported region code
-    bucket_name="my-vector-bucket",
-    index_name="my-vector-index",
-    table_name="my-dynamo-table",
+    vector_bucket="my-vector-bucket",
+    index="my-vector-index",
+    table="my-dynamo-table",
+    dimension=768,
+    region="us-east-1",  # or any supported region code
 )
 db = Dynavec(config=config)
 ```
