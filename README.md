@@ -247,15 +247,11 @@ is captured with latency, cache outcome, result count, and score stats.
 
 ![dynavec observability dashboard](https://raw.githubusercontent.com/codeforstartups/dynavec/development/docs/assets/dashboard.png)
 
-**▶ [Live interactive preview](https://codeforstartups.github.io/dynavec/dashboard/)** — built with the landing-page theme, zero build step (vanilla JS + inline SVG charts).
+**▶ [Live interactive preview](https://codeforstartups.github.io/dynavec/dashboard/)** — in the landing-page theme.
 
-Run it locally on real data (no AWS needed — real searches against in-memory stand-ins):
+The dashboard is a **Next.js + TypeScript + Tailwind + Recharts** app in [`dashboard/`](dashboard); the data comes from a tiny Python telemetry API. Two steps:
 
-```bash
-python examples/dashboard_demo.py     # then open http://127.0.0.1:8779
-```
-
-Wire it into your own app:
+**1. Expose real telemetry** — attach a recorder to your client and serve the API:
 
 ```python
 from dynavec import Dynavec, DynavecConfig, SemanticCache
@@ -265,8 +261,19 @@ from dynavec.dashboard import serve
 rec = TelemetryRecorder()
 db = Dynavec(cfg, embedder=emb, cache=SemanticCache(), telemetry=rec)
 # ... your app runs searches; the recorder fills automatically ...
-serve(rec, port=8779)
+serve(rec, port=8779)          # JSON API at http://127.0.0.1:8779
 ```
+
+**2. Run the dashboard** (points at that API; falls back to sample data if unset):
+
+```bash
+cd dashboard
+npm install
+NEXT_PUBLIC_DYNAVEC_API=http://127.0.0.1:8779 npm run dev   # http://localhost:3000
+```
+
+No AWS? `python examples/dashboard_demo.py` runs real searches against in-memory
+stand-ins and serves the API on `:8779` for the dashboard to read.
 
 It shows a query-volume histogram, latency percentiles (p50/p95/p99), cache
 hit-rate, and a filterable **traces** table with per-trace drill-down.
