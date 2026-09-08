@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from .base import Embedder, Vector
 
 if TYPE_CHECKING:  # for type checkers / IDEs only
-    from .bedrock import BedrockEmbedder
+    from .bedrock import BedrockEmbedder, BedrockTitanMultimodalEmbedder
     from .gemini import GeminiEmbedder
     from .mistral import MistralEmbedder
     from .openai import OpenAIEmbedder
@@ -25,6 +25,7 @@ __all__ = [
     "OpenAIEmbedder",
     "GeminiEmbedder",
     "BedrockEmbedder",
+    "BedrockTitanMultimodalEmbedder",
     "SentenceTransformerEmbedder",
     "VoyageEmbedder",
     "MistralEmbedder",
@@ -34,6 +35,10 @@ _LAZY = {
     "OpenAIEmbedder": ("dynavec.embeddings.openai", "OpenAIEmbedder"),
     "GeminiEmbedder": ("dynavec.embeddings.gemini", "GeminiEmbedder"),
     "BedrockEmbedder": ("dynavec.embeddings.bedrock", "BedrockEmbedder"),
+    "BedrockTitanMultimodalEmbedder": (
+        "dynavec.embeddings.bedrock",
+        "BedrockTitanMultimodalEmbedder",
+    ),
     "SentenceTransformerEmbedder": (
         "dynavec.embeddings.sentence_transformers",
         "SentenceTransformerEmbedder",
