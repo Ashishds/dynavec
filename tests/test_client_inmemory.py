@@ -234,7 +234,7 @@ def test_ns_tag_present_in_s3(db):
     db.upsert([Document(id="1", text="hello")], namespace="ns9")
     # reach into the fake to confirm the namespace tag was written
     store = db._vectors._store
-    (_, meta), = [v for k, v in store.items()]
+    (_, meta), = (v for k, v in store.items())
     assert meta[NS_METADATA_KEY] == "ns9"
 
 
