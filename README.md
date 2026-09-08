@@ -245,7 +245,7 @@ A native, in-your-brand **observability dashboard** — a Langfuse-style view of
 **real** query telemetry (no simulated data). Attach a recorder and every search
 is captured with latency, cache outcome, result count, and score stats.
 
-![dynavec observability dashboard](docs/assets/dashboard.png)
+![dynavec observability dashboard](https://raw.githubusercontent.com/codeforstartups/dynavec/development/docs/assets/dashboard.png)
 
 **▶ [Live interactive preview](https://codeforstartups.github.io/dynavec/dashboard/)** — built with the landing-page theme, zero build step (vanilla JS + inline SVG charts).
 
