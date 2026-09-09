@@ -69,6 +69,7 @@ all = [
 # --- Dev / test / benchmark ---
 dev = [
     "pytest>=8.0",
+    "pytest-asyncio>=0.23",
     "pytest-cov>=5.0",
     "moto[dynamodb]>=5.0",
     "ruff>=0.6",
@@ -96,6 +97,7 @@ include = ["src/dynavec/py.typed"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+asyncio_mode = "auto"
 
 [tool.ruff]
 line-length = 100
