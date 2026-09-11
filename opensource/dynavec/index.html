@@ -34,6 +34,9 @@
         <a href="docs/index.html">Docs</a>
         <a href="#contribute">Contribute</a>
       </nav>
+      <button class="theme-btn" id="themeToggle" aria-label="Toggle theme">
+        <span id="themeIcon">◐</span> <span id="themeLabel">Dark</span>
+      </button>
       <a class="btn btn--ghost star" href="https://github.com/codeforstartups/dynavec" target="_blank" rel="noopener">
         <span aria-hidden="true">★</span> Star
         <span class="star__count" data-stars>—</span>
@@ -204,24 +207,24 @@
           <svg viewBox="0 0 900 300" class="arch__svg" role="img" aria-label="dynavec architecture diagram">
             <!-- query in -->
             <text x="10" y="40" class="d-label">query</text>
-            <line x1="60" y1="35" x2="150" y2="35" class="d-line" marker-end="url(#arrow)"/>
+            <line x1="60" y1="35" x2="150" y2="35" class="d-line arch__flow" marker-end="url(#arrow)"/>
             <!-- embedder -->
             <rect x="150" y="12" width="150" height="46" class="d-box"/>
             <text x="225" y="40" class="d-text" text-anchor="middle">Embedder (BYO key)</text>
-            <line x1="300" y1="35" x2="390" y2="35" class="d-line" marker-end="url(#arrow)"/>
+            <line x1="300" y1="35" x2="390" y2="35" class="d-line arch__flow" marker-end="url(#arrow)"/>
             <!-- s3 vectors -->
             <rect x="390" y="12" width="200" height="66" class="d-box d-box--em"/>
             <text x="490" y="38" class="d-text" text-anchor="middle">S3 Vectors</text>
             <text x="490" y="58" class="d-sub" text-anchor="middle">ANN · nearest keys</text>
             <!-- keys down to dynamo -->
-            <line x1="490" y1="78" x2="490" y2="150" class="d-line" marker-end="url(#arrow)"/>
+            <line x1="490" y1="78" x2="490" y2="150" class="d-line arch__flow" marker-end="url(#arrow)"/>
             <text x="500" y="120" class="d-sub">keys + distance</text>
             <!-- dynamodb -->
             <rect x="390" y="150" width="200" height="66" class="d-box"/>
             <text x="490" y="176" class="d-text" text-anchor="middle">DynamoDB</text>
             <text x="490" y="196" class="d-sub" text-anchor="middle">BatchGetItem · documents</text>
             <!-- rank out -->
-            <line x1="590" y1="183" x2="690" y2="183" class="d-line" marker-end="url(#arrow)"/>
+            <line x1="590" y1="183" x2="690" y2="183" class="d-line arch__flow" marker-end="url(#arrow)"/>
             <rect x="690" y="160" width="200" height="46" class="d-box"/>
             <text x="790" y="188" class="d-text" text-anchor="middle">rerank · results</text>
             <!-- graph note -->
@@ -258,6 +261,73 @@
           Cost across every common embedding dimension (384–3072) and 100K → 1&nbsp;billion vectors.
           dynavec stays lowest at every point because its storage is priced like S3, not RAM.
         </p>
+
+        <!-- Interactive Cost Calculator -->
+        <div class="calc-card">
+          <div class="calc-header">
+            <h3 class="calc-title">Interactive Cost Estimator</h3>
+            <span class="calc-badge">Live Comparison · 1536-dim</span>
+          </div>
+
+          <div class="calc-controls">
+            <div class="calc-control">
+              <label for="calcVectors">
+                <span>Vector Corpus Scale</span>
+                <span class="calc-val" id="calcVecDisplay">1M vectors</span>
+              </label>
+              <input type="range" id="calcVectors" class="calc-slider" min="0" max="8" value="2" step="1" />
+            </div>
+            <div class="calc-control">
+              <label for="calcQueries">
+                <span>Monthly Query Volume</span>
+                <span class="calc-val" id="calcQDisplay">1M / mo</span>
+              </label>
+              <input type="range" id="calcQueries" class="calc-slider" min="0" max="4" value="2" step="1" />
+            </div>
+          </div>
+
+          <div class="calc-bars">
+            <div class="calc-row">
+              <span class="calc-name">dynavec</span>
+              <div class="calc-track">
+                <div class="calc-fill calc-fill--dynavec" id="dynaBar" style="width: 5%;"></div>
+              </div>
+              <span class="calc-cost" id="dynaCost">$3/mo</span>
+            </div>
+            <div class="calc-row">
+              <span class="calc-name">Pinecone</span>
+              <div class="calc-track">
+                <div class="calc-fill" id="pineBar" style="width: 15%;"></div>
+              </div>
+              <span class="calc-cost" id="pineCost">$10/mo</span>
+            </div>
+            <div class="calc-row">
+              <span class="calc-name">Qdrant</span>
+              <div class="calc-track">
+                <div class="calc-fill" id="qdrantBar" style="width: 40%;"></div>
+              </div>
+              <span class="calc-cost" id="qdrantCost">$160/mo</span>
+            </div>
+            <div class="calc-row">
+              <span class="calc-name">Weaviate</span>
+              <div class="calc-track">
+                <div class="calc-fill" id="weavBar" style="width: 45%;"></div>
+              </div>
+              <span class="calc-cost" id="weavCost">$175/mo</span>
+            </div>
+            <div class="calc-row">
+              <span class="calc-name">OpenSearch</span>
+              <div class="calc-track">
+                <div class="calc-fill" id="openBar" style="width: 100%;"></div>
+              </div>
+              <span class="calc-cost" id="openCost">$701/mo</span>
+            </div>
+          </div>
+
+          <div class="calc-savings">
+            Estimated savings vs Pinecone: <strong id="calcSavingsAmount">$84 / year</strong> (up to <strong>90%+</strong> at larger scale)
+          </div>
+        </div>
 
         <figure class="fig">
           <img src="images/cost_matrix_by_dim.png" alt="Estimated monthly cost by scale and embedding dimension across vector databases" loading="lazy" />
@@ -311,6 +381,9 @@
             <button class="tab is-active" role="tab" aria-selected="true" data-tab="t-start">Quickstart</button>
             <button class="tab" role="tab" aria-selected="false" data-tab="t-search">Search &amp; rerank</button>
             <button class="tab" role="tab" aria-selected="false" data-tab="t-ns">Namespaces</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="t-pinecone">Pinecone migration</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="t-quant">int8 quantization</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="t-dash">Observability</button>
             <button class="tab" role="tab" aria-selected="false" data-tab="t-graph">Knowledge graph</button>
             <button class="tab" role="tab" aria-selected="false" data-tab="t-cache">Caching</button>
             <button class="tab" role="tab" aria-selected="false" data-tab="t-lc">LangChain</button>
@@ -359,6 +432,46 @@ kb.search("query scoped to this tenant only", top_k=4)
 # stream results to an agent as pages arrive
 for hit in db.search_stream("large query", top_k=100):
     handle(hit)</code></pre>
+
+            <pre class="code is-hidden" id="t-pinecone" role="tabpanel"><code>from dynavec.migration import PineconeMigrator
+
+# Zero-downtime, batched migration from Pinecone
+migrator = PineconeMigrator(api_key="pcsk_...", index_name="my-index")
+
+# Discovers namespaces and streams batches with progress callback
+report = migrator.migrate(
+    dynavec=db,
+    namespace="production",
+    target_namespace="production-v2",
+    batch_size=100,
+    progress_callback=lambda n, total: print(f"Migrated {n}/{total} vectors"),
+)
+print(f"Migrated {report.migrated} vectors in {report.duration_sec:.1f}s")</code></pre>
+
+            <pre class="code is-hidden" id="t-quant" role="tabpanel"><code>from dynavec import ScalarQuantizer
+
+# 4x memory compression using calibrated int8 scalar quantization
+sq = ScalarQuantizer()
+sq.fit(sample_embeddings)     # calibrates per-dimension min/max
+
+# Encode 1536-dim float32 vectors to uint8 (4x smaller cache footprint)
+compressed = sq.encode(vectors)
+print(f"Compression ratio: {sq.compression_ratio:.1f}x")
+
+# Asymmetric distance computation for high-speed cache queries
+scores = sq.distances(query_vector, compressed, metric="cosine")</code></pre>
+
+            <pre class="code is-hidden" id="t-dash" role="tabpanel"><code>from dynavec import Dynavec, DynavecConfig
+from dynavec.telemetry import TelemetryRecorder
+from dynavec.dashboard import serve
+
+# Real-event telemetry capture (QPM, p50/p95/p99, cache hit rates, traces)
+rec = TelemetryRecorder(max_events=10_000)
+db = Dynavec(cfg, telemetry=rec)
+
+# Launch built-in observability dashboard (dark mode, eval curves, secure token)
+serve(rec, port=8778, eval_dir="./eval_results")
+# Or via CLI: dynavec dashboard --port 8778</code></pre>
 
             <pre class="code is-hidden" id="t-graph" role="tabpanel"><code># attach meaning: entities, relations, and links to documents
 db.graph_add_edge("acme", "competes_with", "globex", namespace="kb")

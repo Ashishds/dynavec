@@ -127,9 +127,7 @@ def test_mcp_resource_source_yields_records():
 
 
 def test_mcp_uri_filter():
-    session = FakeMCPSession(
-        {"notion://a": ("A", "x"), "confluence://b": ("B", "y")}
-    )
+    session = FakeMCPSession({"notion://a": ("A", "x"), "confluence://b": ("B", "y")})
     records = list(MCPResourceSource(session, uri_filter=lambda u: u.startswith("notion")))
     assert [r.id for r in records] == ["notion://a"]
 

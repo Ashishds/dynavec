@@ -1,22 +1,26 @@
 import type { Config } from "tailwindcss";
 
 // dynavec brand tokens — kept in sync with the landing page (styles.css).
+// Dark mode uses `class` strategy for localStorage-persisted toggle.
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
-        bg: "#fbfaf8",
-        surface: "#ffffff",
-        ink: "#14110f",
-        muted: "#6f6862",
-        faint: "#a99f97",
-        line: "#ece6df",
-        accent: "#e8623b",
-        "accent-ink": "#b8472a",
-        "accent-soft": "#fdeee8",
-        ok: "#2f7d5b",
-        err: "#b8472a",
+        bg: "var(--color-bg)",
+        surface: "var(--color-surface)",
+        ink: "var(--color-ink)",
+        muted: "var(--color-muted)",
+        faint: "var(--color-faint)",
+        line: "var(--color-line)",
+        accent: "var(--color-accent)",
+        "accent-ink": "var(--color-accent-ink)",
+        "accent-soft": "var(--color-accent-soft)",
+        ok: "var(--color-ok)",
+        err: "var(--color-err)",
+        "table-head": "var(--color-table-head)",
+        "chart-track": "var(--color-chart-track)",
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],

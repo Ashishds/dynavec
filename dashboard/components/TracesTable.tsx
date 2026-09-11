@@ -2,9 +2,9 @@
 import type { TraceEvent, TraceFilters } from "@/lib/types";
 
 const OP_CLASS: Record<string, string> = {
-  search: "bg-[#eef3ff] text-[#3b5bdb] border-[#dbe3ff]",
-  graph_search: "bg-[#f3eeff] text-[#7048e8] border-[#e5dbff]",
-  upsert: "bg-[#eafaf1] text-ok border-[#d3f0e0]",
+  search: "bg-[#eef3ff] text-[#3b5bdb] border-[#dbe3ff] dark:bg-[#1e2740] dark:text-[#8da4ef] dark:border-[#2e3d5f]",
+  graph_search: "bg-[#f3eeff] text-[#7048e8] border-[#e5dbff] dark:bg-[#261e40] dark:text-[#b59aef] dark:border-[#3d2e5f]",
+  upsert: "bg-[#eafaf1] text-ok border-[#d3f0e0] dark:bg-[#1a2e22] dark:text-ok dark:border-[#2a4e35]",
 };
 
 export default function TracesTable({
@@ -23,7 +23,7 @@ export default function TracesTable({
           <select
             value={filters.op || ""}
             onChange={(e) => onFilter({ ...filters, op: e.target.value })}
-            className="font-mono text-[12px] border border-line rounded-md px-2.5 py-1.5 bg-bg"
+            className="font-mono text-[12px] border border-line rounded-md px-2.5 py-1.5 bg-bg text-ink"
           >
             <option value="">all ops</option>
             <option value="search">search</option>
@@ -33,7 +33,7 @@ export default function TracesTable({
           <select
             value={filters.status || ""}
             onChange={(e) => onFilter({ ...filters, status: e.target.value })}
-            className="font-mono text-[12px] border border-line rounded-md px-2.5 py-1.5 bg-bg"
+            className="font-mono text-[12px] border border-line rounded-md px-2.5 py-1.5 bg-bg text-ink"
           >
             <option value="">any status</option>
             <option value="ok">ok</option>
@@ -43,7 +43,7 @@ export default function TracesTable({
             placeholder="namespace…"
             value={filters.namespace || ""}
             onChange={(e) => onFilter({ ...filters, namespace: e.target.value })}
-            className="font-mono text-[12px] border border-line rounded-md px-2.5 py-1.5 bg-bg w-28"
+            className="font-mono text-[12px] border border-line rounded-md px-2.5 py-1.5 bg-bg text-ink w-28"
           />
         </div>
       </div>
@@ -54,7 +54,7 @@ export default function TracesTable({
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[13px]">
             <thead>
-              <tr className="text-left font-mono text-[11px] uppercase tracking-wide text-muted bg-[#faf6f1]">
+              <tr className="text-left font-mono text-[11px] uppercase tracking-wide text-muted bg-table-head">
                 {["Start", "Op", "Namespace", "Latency", "Results", "Cache", "Rank", "Status"].map((h) => (
                   <th key={h} className="px-[18px] py-2.5 border-b border-line font-normal">{h}</th>
                 ))}

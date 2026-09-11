@@ -138,15 +138,11 @@ class S3VectorsStore:
                 f"top_k ({top_k}) exceeds Amazon S3 Vectors maximum limit of {_MAX_TOP_K}."
             )
 
-        effective_page_size = (
-            page_size if page_size is not None else self._config.top_k_page_size
-        )
+        effective_page_size = page_size if page_size is not None else self._config.top_k_page_size
         if effective_page_size is not None and effective_page_size <= 0:
             raise ValueError("page_size must be a positive integer.")
 
-        kwargs = self._query_kwargs(
-            query_vector, top_k, filter, return_metadata, return_distance
-        )
+        kwargs = self._query_kwargs(query_vector, top_k, filter, return_metadata, return_distance)
         paginator = self._client.get_paginator("query_vectors")
         yielded = 0
         buffer: list[dict[str, Any]] = []
@@ -205,9 +201,7 @@ class S3VectorsStore:
             leaves the page size to Amazon S3 Vectors.
         """
         if page_size is not None and not _LIST_PAGE_MIN <= page_size <= _LIST_PAGE_MAX:
-            raise ValueError(
-                f"page_size must be between {_LIST_PAGE_MIN} and {_LIST_PAGE_MAX}."
-            )
+            raise ValueError(f"page_size must be between {_LIST_PAGE_MIN} and {_LIST_PAGE_MAX}.")
 
         kwargs: dict[str, Any] = {
             "vectorBucketName": self._config.vector_bucket,

@@ -28,9 +28,7 @@ try:
         VectorStoreQueryResult,
     )
 except ImportError as exc:  # pragma: no cover - import guard
-    raise MissingDependencyError(
-        "DynavecLlamaStore", "llama-index-core", "all"
-    ) from exc
+    raise MissingDependencyError("DynavecLlamaStore", "llama-index-core", "all") from exc
 
 
 class DynavecLlamaStore(BasePydanticVectorStore):

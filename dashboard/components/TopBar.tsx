@@ -1,5 +1,7 @@
 "use client";
 
+import ThemeToggle from "./ThemeToggle";
+
 const RANGES = [
   { label: "30m", w: 1800 },
   { label: "1h", w: 3600 },
@@ -52,12 +54,14 @@ export default function TopBar({
       <button
         onClick={onAuto}
         className={
-          "font-mono text-[12px] border-[1.5px] border-ink rounded-lg px-3 py-1.5 " +
-          (auto ? "bg-ink text-white" : "bg-surface text-ink")
+          "font-mono text-[12px] border-[1.5px] border-ink rounded-lg px-3 py-1.5 transition-colors flex items-center gap-1.5 cursor-pointer " +
+          (auto ? "bg-ink text-bg font-semibold" : "bg-surface text-ink hover:border-accent")
         }
       >
+        {auto && <span className="w-1.5 h-1.5 rounded-full bg-ok animate-pulse" />}
         Auto-refresh
       </button>
+      <ThemeToggle />
     </header>
   );
 }

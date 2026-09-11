@@ -167,8 +167,11 @@ class Dynavec:
             for d in docs:
                 ctx = pipeline(
                     TransformContext(
-                        id=d.id, text=d.text, vector=d.vector,
-                        metadata=dict(d.metadata), namespace=namespace,
+                        id=d.id,
+                        text=d.text,
+                        vector=d.vector,
+                        metadata=dict(d.metadata),
+                        namespace=namespace,
                     )
                 )
                 d.text, d.vector, d.metadata = ctx.text, ctx.vector, ctx.metadata
@@ -318,7 +321,13 @@ class Dynavec:
         t0 = time.perf_counter()
         tel = self._telemetry
         try:
+            # Fire search-start hook
+            if tel is not None:
+                tel._fire("on_search_start", namespace, top_k)
+
+            t_embed = time.perf_counter()
             query_vector = self._resolve_query_vector(query, vector)
+            embed_ms = round((time.perf_counter() - t_embed) * 1000, 3)
 
             # cache key includes ranking options so different ranking != same entry
             cache_on = self._cache is not None if use_cache is None else use_cache
@@ -335,38 +344,74 @@ class Dynavec:
                 }
                 cached = self._cache.get(namespace, query_vector, top_k, cache_filter)
                 if cached is not None:
-                    self._record_search(tel, t0, namespace, top_k, cached, True,
-                                        filter, rescore, rerank, query)
+                    self._record_search(
+                        tel, t0, namespace, top_k, cached, True, filter, rescore, rerank, query
+                    )
                     return cached
 
-            results = self._search_core(
-                query_vector, top_k, namespace, filter, rescore, rerank,
-                mmr_lambda, include_vectors, normalize_scores,
+            results, timing = self._search_core(
+                query_vector,
+                top_k,
+                namespace,
+                filter,
+                rescore,
+                rerank,
+                mmr_lambda,
+                include_vectors,
+                normalize_scores,
             )
+            timing["embed_ms"] = embed_ms
 
             if cache_on and self._cache is not None and results:
                 self._cache.put(namespace, query_vector, top_k, cache_filter, results)
-            self._record_search(tel, t0, namespace, top_k, results,
-                                (False if cache_on else None),
-                                filter, rescore, rerank, query)
+            self._record_search(
+                tel,
+                t0,
+                namespace,
+                top_k,
+                results,
+                (False if cache_on else None),
+                filter,
+                rescore,
+                rerank,
+                query,
+                timing,
+            )
             return results
         except Exception as exc:  # noqa: BLE001 - record then re-raise
             if tel is not None:
-                tel.record(tel.new_event(
-                    "search", namespace=namespace, top_k=top_k,
-                    latency_ms=round((time.perf_counter() - t0) * 1000, 3),
-                    status="error", error=str(exc)[:200], filtered=bool(filter),
-                    rescore=self._rescore_label(rescore), rerank=rerank,
-                ))
+                tel.record(
+                    tel.new_event(
+                        "search",
+                        namespace=namespace,
+                        top_k=top_k,
+                        latency_ms=round((time.perf_counter() - t0) * 1000, 3),
+                        status="error",
+                        error=str(exc)[:200],
+                        filtered=bool(filter),
+                        rescore=self._rescore_label(rescore),
+                        rerank=rerank,
+                    )
+                )
             raise
 
     def _search_core(
-        self, query_vector, top_k, namespace, filter, rescore, rerank,
-        mmr_lambda, include_vectors, normalize_scores,
-    ) -> list[SearchResult]:
+        self,
+        query_vector,
+        top_k,
+        namespace,
+        filter,
+        rescore,
+        rerank,
+        mmr_lambda,
+        include_vectors,
+        normalize_scores,
+    ) -> tuple[list[SearchResult], dict[str, float]]:
+        timing: dict[str, float] = {}
         needs_vectors = rerank == "mmr" or rescore is not None or include_vectors
         fetch_k = top_k * self.config.over_fetch if (rerank or rescore) else top_k
 
+        t_ann = time.perf_counter()
         raw = self._vectors.query(
             query_vector=query_vector,
             top_k=fetch_k,
@@ -374,12 +419,16 @@ class Dynavec:
             return_metadata=True,
             return_distance=True,
         )
+        timing["ann_ms"] = round((time.perf_counter() - t_ann) * 1000, 3)
         if not raw:
-            return []
+            return [], timing
 
         hits = [(self._split_key(v["key"])[1], v.get("distance")) for v in raw]
         ids = [h[0] for h in hits]
+
+        t_hydrate = time.perf_counter()
         hydrated = self._docs.get_many(namespace, ids)
+        timing["hydrate_ms"] = round((time.perf_counter() - t_hydrate) * 1000, 3)
 
         vec_by_key = {}
         if needs_vectors:
@@ -390,12 +439,17 @@ class Dynavec:
         results: list[SearchResult] = []
         for doc_id, distance in hits:
             doc = hydrated.get(doc_id, {})
-            vec = vec_by_key.get(self._s3_key(namespace, doc_id), {}).get("vector") if vec_by_key else None
+            vec = (
+                vec_by_key.get(self._s3_key(namespace, doc_id), {}).get("vector")
+                if vec_by_key
+                else None
+            )
             results.append(
                 SearchResult(
                     id=doc_id,
                     score=distance_to_score(distance, self.config.distance_metric)
-                    if distance is not None else 0.0,
+                    if distance is not None
+                    else 0.0,
                     distance=distance,
                     text=doc.get("text"),
                     metadata=doc.get("metadata", {}),
@@ -403,12 +457,14 @@ class Dynavec:
                 )
             )
 
+        t_rerank = time.perf_counter()
         if rescore is not None:
             results = self._apply_rescore(query_vector, results, rescore)
         if rerank == "mmr":
             results = maximal_marginal_relevance(query_vector, results, top_k, mmr_lambda)
         else:
             results = results[:top_k]
+        timing["rerank_ms"] = round((time.perf_counter() - t_rerank) * 1000, 3)
 
         if normalize_scores and results:
             normalized = normalize_metric_scores(np.asarray([r.score for r in results]))
@@ -419,7 +475,7 @@ class Dynavec:
             for r in results:
                 r.vector = None
 
-        return results
+        return results, timing
 
     @staticmethod
     def _rescore_label(rescore: RescoreSpec | None) -> str | None:
@@ -427,25 +483,48 @@ class Dynavec:
             return None
         return rescore if isinstance(rescore, str) else "composite"
 
-    def _record_search(self, tel, t0, namespace, top_k, results, cache_hit,
-                       filter, rescore, rerank, query) -> None:
+    def _record_search(
+        self,
+        tel,
+        t0,
+        namespace,
+        top_k,
+        results,
+        cache_hit,
+        filter,
+        rescore,
+        rerank,
+        query,
+        timing=None,
+    ) -> None:
         if tel is None:
             return
         scores = [r.score for r in results] if results else []
-        tel.record(tel.new_event(
-            "search",
-            namespace=namespace,
-            top_k=top_k,
-            latency_ms=round((time.perf_counter() - t0) * 1000, 3),
-            n_results=len(results),
-            cache_hit=cache_hit,
-            filtered=bool(filter),
-            rescore=self._rescore_label(rescore),
-            rerank=rerank,
-            score_top=round(max(scores), 4) if scores else None,
-            score_mean=round(sum(scores) / len(scores), 4) if scores else None,
-            query_preview=(query[:80] if (query and tel.capture_text) else None),
-        ))
+        t_kw = {}
+        if timing:
+            t_kw = {
+                "embed_ms": timing.get("embed_ms"),
+                "ann_ms": timing.get("ann_ms"),
+                "hydrate_ms": timing.get("hydrate_ms"),
+                "rerank_ms": timing.get("rerank_ms"),
+            }
+        tel.record(
+            tel.new_event(
+                "search",
+                namespace=namespace,
+                top_k=top_k,
+                latency_ms=round((time.perf_counter() - t0) * 1000, 3),
+                n_results=len(results),
+                cache_hit=cache_hit,
+                filtered=bool(filter),
+                rescore=self._rescore_label(rescore),
+                rerank=rerank,
+                score_top=round(max(scores), 4) if scores else None,
+                score_mean=round(sum(scores) / len(scores), 4) if scores else None,
+                query_preview=(query[:80] if (query and tel.capture_text) else None),
+                **t_kw,
+            )
+        )
 
     def _apply_rescore(
         self, query_vector: list[float], results: list[SearchResult], spec: RescoreSpec
@@ -506,7 +585,8 @@ class Dynavec:
                 yield SearchResult(
                     id=doc_id,
                     score=distance_to_score(distance, self.config.distance_metric)
-                    if distance is not None else 0.0,
+                    if distance is not None
+                    else 0.0,
                     distance=distance,
                     text=doc.get("text"),
                     metadata=doc.get("metadata", {}),
@@ -523,9 +603,7 @@ class Dynavec:
         ]
         return [f.result() for f in futures]
 
-    def _resolve_query_vector(
-        self, query: str | None, vector: list[float] | None
-    ) -> list[float]:
+    def _resolve_query_vector(self, query: str | None, vector: list[float] | None) -> list[float]:
         if vector is not None:
             if len(vector) != self.config.dimension:
                 raise DimensionMismatchError(
@@ -692,12 +770,12 @@ class Dynavec:
         if not doc_ids:
             return []
 
-        vec_by_key = self._vectors.get_vectors(
-            [self._s3_key(namespace, d) for d in doc_ids]
-        )
+        vec_by_key = self._vectors.get_vectors([self._s3_key(namespace, d) for d in doc_ids])
         hydrated = self._docs.get_many(namespace, doc_ids)
 
-        scored = [d for d in doc_ids if vec_by_key.get(self._s3_key(namespace, d), {}).get("vector")]
+        scored = [
+            d for d in doc_ids if vec_by_key.get(self._s3_key(namespace, d), {}).get("vector")
+        ]
         if not scored:
             return []
         mat = np.asarray(
@@ -713,8 +791,10 @@ class Dynavec:
             doc = hydrated.get(d, {})
             out.append(
                 SearchResult(
-                    id=d, score=float(scores[int(i)]),
-                    text=doc.get("text"), metadata=doc.get("metadata", {}),
+                    id=d,
+                    score=float(scores[int(i)]),
+                    text=doc.get("text"),
+                    metadata=doc.get("metadata", {}),
                 )
             )
         return out
@@ -722,7 +802,9 @@ class Dynavec:
     def delete(self, ids: list[str], namespace: str = "default") -> None:
         """Delete documents from both stores."""
         keys = [self._s3_key(namespace, doc_id) for doc_id in ids]
-        self._run_parallel([
-            lambda: self._vectors.delete_vectors(keys),
-            lambda: self._docs.delete_many(namespace, ids),
-        ])
+        self._run_parallel(
+            [
+                lambda: self._vectors.delete_vectors(keys),
+                lambda: self._docs.delete_many(namespace, ids),
+            ]
+        )

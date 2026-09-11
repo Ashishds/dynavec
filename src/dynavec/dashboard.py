@@ -12,6 +12,14 @@ they come from actual operations recorded on the client, not a simulator.
     from dynavec.dashboard import serve
     serve(rec, port=8778)
 
+Security
+--------
+- Binds to ``127.0.0.1`` by default so the dashboard is not exposed to the network.
+- When ``DYNAVEC_DASHBOARD_TOKEN`` is set in the environment, every request must
+  include ``Authorization: Bearer <token>``.  This prevents unauthorised local
+  processes from reading telemetry data.  AWS credentials are **never** sent to the
+  browser.
+
 Vanilla JS + inline SVG charts (no CDN, no build step). Endpoints:
     GET /                      the dashboard
     GET /api/metrics?window=   aggregated stats + histogram
@@ -22,7 +30,10 @@ Vanilla JS + inline SVG charts (no CDN, no build step). Endpoints:
 from __future__ import annotations
 
 import json
+import os
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from .telemetry import TelemetryRecorder, aggregate
@@ -111,18 +122,22 @@ tr.row:hover{background:var(--accent-soft)}
   </div>
   <button class="toggle on" id="auto">Auto-refresh</button>
 </div>
+<div style="background:#e8623b;color:#fff;padding:8px 20px;font-family:var(--sans);font-size:13px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #c74b28;">
+  <span><strong>🚀 Full Next.js Dashboard:</strong> All 7 tabs (Latency waterfall, Cost sliders, Faithfulness, Resources, Namespaces) are live at <strong>http://localhost:3001</strong></span>
+  <a href="http://localhost:3001" style="background:#fff;color:#e8623b;padding:4px 12px;border-radius:6px;font-weight:600;text-decoration:none;font-size:12px;">Open Full Dashboard &rarr;</a>
+</div>
 <div class="layout">
   <nav class="side">
     <h4>Observability</h4>
     <a class="on" href="#">Tracing</a>
-    <a href="#" onclick="return false">Latency</a>
-    <a href="#" onclick="return false">Cost</a>
+    <a href="http://localhost:3001" style="color:var(--accent);">Latency &rarr;</a>
+    <a href="http://localhost:3001" style="color:var(--accent);">Cost &rarr;</a>
     <h4>Evaluation</h4>
-    <a class="soon">Scores <span class="tag">soon</span></a>
-    <a class="soon">Faithfulness <span class="tag">soon</span></a>
+    <a href="http://localhost:3001" style="color:var(--accent);">Scores &rarr;</a>
+    <a href="http://localhost:3001" style="color:var(--accent);">Faithfulness &rarr;</a>
     <h4>Resources</h4>
-    <a class="soon">Buckets &amp; Indexes <span class="tag">soon</span></a>
-    <a class="soon">Namespaces <span class="tag">soon</span></a>
+    <a href="http://localhost:3001" style="color:var(--accent);">Buckets &amp; Indexes &rarr;</a>
+    <a href="http://localhost:3001" style="color:var(--accent);">Namespaces &rarr;</a>
   </nav>
   <main class="main">
     <div class="kpis" id="kpis"></div>
@@ -208,7 +223,14 @@ load();schedule();
 </body></html>"""
 
 
-def _make_handler(recorder: TelemetryRecorder):
+def _make_handler(
+    recorder: TelemetryRecorder,
+    token: str | None = None,
+    eval_dir: str | None = None,
+    db: Any = None,
+):
+    """Create a request handler class with optional Bearer-token auth and live query routes."""
+
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *a):  # quiet
             pass
@@ -218,10 +240,34 @@ def _make_handler(recorder: TelemetryRecorder):
             self.send_response(code)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(data)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+            # Security: prevent browser from sniffing content types
+            self.send_header("X-Content-Type-Options", "nosniff")
             self.end_headers()
             self.wfile.write(data)
 
+        def do_OPTIONS(self):
+            self.send_response(204)
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+            self.end_headers()
+
+        def _check_auth(self) -> bool:
+            """Return True if the request is authorised (or auth is disabled)."""
+            if token is None:
+                return True
+            auth = self.headers.get("Authorization", "")
+            if auth == f"Bearer {token}":
+                return True
+            self._send(401, json.dumps({"error": "unauthorized"}))
+            return False
+
         def do_GET(self):
+            if not self._check_auth():
+                return
             parsed = urlparse(self.path)
             path, qs = parsed.path, parse_qs(parsed.query)
             if path == "/" or path == "/index.html":
@@ -242,16 +288,157 @@ def _make_handler(recorder: TelemetryRecorder):
                 if ev is None:
                     return self._send(404, json.dumps({"error": "not found"}))
                 return self._send(200, json.dumps(ev.to_dict()))
+            if path == "/api/eval":
+                return self._send(200, json.dumps(_load_eval_runs(eval_dir)))
+            if path == "/api/search":
+                q = qs.get("q", [""])[0].strip()
+                ns = qs.get("namespace", ["production-core"])[0].strip()
+                top_k = int(qs.get("top_k", ["3"])[0])
+                if not q:
+                    return self._send(400, json.dumps({"error": "query parameter 'q' is required"}))
+                if not db:
+                    return self._send(503, json.dumps({"error": "Dynavec client not attached"}))
+                try:
+                    t0 = time.perf_counter()
+                    results = db.search(q, namespace=ns, top_k=top_k)
+                    latency_ms = (time.perf_counter() - t0) * 1000
+                    out = [
+                        {
+                            "id": r.id,
+                            "text": r.text,
+                            "score": round(float(r.score), 4),
+                            "metadata": r.metadata,
+                        }
+                        for r in results
+                    ]
+                    return self._send(200, json.dumps({"query": q, "namespace": ns, "latency_ms": round(latency_ms, 2), "results": out}))
+                except Exception as exc:
+                    return self._send(500, json.dumps({"error": str(exc)}))
+            if path == "/api/namespaces":
+                all_ns = {"production-core", "live-demo"}
+                for ev in recorder.events(limit=500):
+                    if ev.namespace:
+                        all_ns.add(ev.namespace)
+                return self._send(200, json.dumps(sorted(list(all_ns))))
+            return self._send(404, json.dumps({"error": "not found"}))
+
+        def do_POST(self):
+            if not self._check_auth():
+                return
+            parsed = urlparse(self.path)
+            if parsed.path == "/api/upsert":
+                if not db:
+                    return self._send(503, json.dumps({"error": "Dynavec client not attached"}))
+                length = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(length).decode("utf-8")
+                try:
+                    payload = json.loads(body)
+                    from dynavec import Document
+                    doc_id = payload.get("id") or f"doc-{int(time.time() * 1000)}"
+                    text = payload.get("text", "").strip()
+                    metadata = payload.get("metadata", {})
+                    ns = payload.get("namespace", "production-core").strip()
+                    if not text:
+                        return self._send(400, json.dumps({"error": "text is required"}))
+                    t0 = time.perf_counter()
+                    db.upsert([Document(id=doc_id, text=text, metadata=metadata)], namespace=ns)
+                    latency_ms = (time.perf_counter() - t0) * 1000
+                    return self._send(200, json.dumps({"status": "ok", "id": doc_id, "namespace": ns, "latency_ms": round(latency_ms, 2)}))
+                except Exception as exc:
+                    return self._send(500, json.dumps({"error": str(exc)}))
+
+            if self.path == "/api/ingest-file":
+                if not db:
+                    return self._send(503, json.dumps({"error": "Dynavec client not attached"}))
+                length = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(length).decode("utf-8")
+                try:
+                    import base64
+                    import io
+                    from dynavec.ingest import Record, ingest
+                    payload = json.loads(body)
+                    filename = payload.get("filename", "document.txt")
+                    raw_b64 = payload.get("content_base64", "")
+                    raw_bytes = base64.b64decode(raw_b64) if raw_b64 else b""
+                    ns = payload.get("namespace", "production-core").strip()
+                    cat = payload.get("category", "general").strip()
+
+                    records = []
+                    t0 = time.perf_counter()
+                    if filename.lower().endswith(".pdf"):
+                        try:
+                            from pypdf import PdfReader
+                            reader = PdfReader(io.BytesIO(raw_bytes))
+                            for page_num, page in enumerate(reader.pages, start=1):
+                                txt = page.extract_text() or ""
+                                if txt.strip():
+                                    records.append(Record(
+                                        id=f"{filename}#p{page_num}",
+                                        text=txt,
+                                        metadata={"filename": filename, "page": page_num, "category": cat}
+                                    ))
+                        except Exception as e:
+                            return self._send(400, json.dumps({"error": f"Failed to parse PDF: {e}"}))
+                    else:
+                        txt = raw_bytes.decode("utf-8", errors="replace")
+                        records.append(Record(id=filename, text=txt, metadata={"filename": filename, "category": cat}))
+
+                    if not records:
+                        return self._send(400, json.dumps({"error": "No text content found in file"}))
+
+                    chunks_count = ingest(db, records, namespace=ns, chunk_size=800, overlap=100)
+                    latency_ms = (time.perf_counter() - t0) * 1000
+                    return self._send(200, json.dumps({
+                        "status": "ok",
+                        "filename": filename,
+                        "pages": len(records),
+                        "chunks_ingested": chunks_count,
+                        "namespace": ns,
+                        "latency_ms": round(latency_ms, 2)
+                    }))
+                except Exception as exc:
+                    return self._send(500, json.dumps({"error": str(exc)}))
             return self._send(404, json.dumps({"error": "not found"}))
 
     return Handler
 
 
-def serve(recorder: TelemetryRecorder, port: int = 8778, host: str = "127.0.0.1") -> None:
+def _load_eval_runs(eval_dir: str | None) -> list[dict]:
+    """Read all eval-*.json files from *eval_dir* and return them sorted by timestamp."""
+    if not eval_dir:
+        return []
+    base = Path(eval_dir)
+    if not base.is_dir():
+        return []
+    runs: list[dict] = []
+    for fp in sorted(base.glob("eval-*.json")):
+        try:
+            data = json.loads(fp.read_text(encoding="utf-8"))
+            # Normalise: ensure a timestamp field exists (fall back to file mtime)
+            if "timestamp" not in data:
+                data["timestamp"] = fp.stat().st_mtime
+            runs.append(data)
+        except (json.JSONDecodeError, OSError):
+            continue
+    return runs
+
+
+def serve(
+    recorder: TelemetryRecorder,
+    port: int = 8778,
+    host: str = "127.0.0.1",
+    eval_dir: str | None = None,
+    db: Any = None,
+) -> None:
     """Start the dashboard server (blocking) bound to localhost by default."""
-    httpd = HTTPServer((host, port), _make_handler(recorder))
-    print(f"dynavec observability dashboard: http://{host}:{port}/")
+    token = os.environ.get("DYNAVEC_DASHBOARD_TOKEN") or None
+    httpd = HTTPServer(
+        (host, port), _make_handler(recorder, token=token, eval_dir=eval_dir, db=db)
+    )
+    auth_note = " (token auth enabled)" if token else " (no auth — set DYNAVEC_DASHBOARD_TOKEN to secure)"
+    print(f"dynavec observability dashboard: http://{host}:{port}/{auth_note}")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
         httpd.shutdown()
+

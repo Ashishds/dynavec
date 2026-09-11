@@ -146,7 +146,9 @@ class MCPResourceSource:
                 continue
             if self._uri_filter and not self._uri_filter(str(uri)):
                 continue
-            name = getattr(res, "name", None) or (res.get("name") if isinstance(res, dict) else None)
+            name = getattr(res, "name", None) or (
+                res.get("name") if isinstance(res, dict) else None
+            )
             contents = self._session.read_resource(uri)
             text = self._extract_text(contents)
             if not text:

@@ -8,7 +8,7 @@ and dynavec only ever calls them with the caller's credentials.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal
 
 DistanceMetric = Literal["cosine", "euclidean"]
 
@@ -108,3 +108,126 @@ class DynavecConfig:
             raise ValueError("top_k_page_size must be a positive integer")
         if self.max_pool_connections is not None and self.max_pool_connections <= 0:
             raise ValueError("max_pool_connections must be a positive integer")
+
+    @classmethod
+    def from_env(
+        cls,
+        prefix: str = "DYNAVEC_",
+        **overrides: Any,
+    ) -> DynavecConfig:
+        """Create a DynavecConfig by reading environment variables with a prefix.
+
+        Parameters
+        ----------
+        prefix:
+            Variable name prefix (default: ``"DYNAVEC_"``).
+        overrides:
+            Explicit keyword arguments that take precedence over environment variables.
+        """
+        import os
+
+        def _get(key: str, default: Any = None) -> Any:
+            return os.environ.get(f"{prefix}{key}", default)
+
+        def _bool(val: Any) -> bool:
+            if isinstance(val, bool):
+                return val
+            return str(val).strip().lower() in ("1", "true", "yes", "on")
+
+        bucket = overrides.get("vector_bucket", _get("VECTOR_BUCKET"))
+        if not bucket:
+            raise ValueError(
+                f"Missing required environment variable '{prefix}VECTOR_BUCKET' "
+                "or 'vector_bucket' argument."
+            )
+
+        index = overrides.get("index", _get("INDEX"))
+        if not index:
+            raise ValueError(
+                f"Missing required environment variable '{prefix}INDEX' "
+                "or 'index' argument."
+            )
+
+        table = overrides.get("table", _get("TABLE"))
+        if not table:
+            raise ValueError(
+                f"Missing required environment variable '{prefix}TABLE' "
+                "or 'table' argument."
+            )
+
+        dim_str = overrides.get("dimension", _get("DIMENSION"))
+        if dim_str is None:
+            raise ValueError(
+                f"Missing required environment variable '{prefix}DIMENSION' "
+                "or 'dimension' argument."
+            )
+        dimension = int(dim_str)
+
+        distance_metric = overrides.get("distance_metric", _get("DISTANCE_METRIC", "cosine"))
+        region = overrides.get(
+            "region",
+            _get("REGION") or os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION"),
+        )
+
+        auto_provision = overrides.get("auto_provision")
+        if auto_provision is None:
+            raw_prov = _get("AUTO_PROVISION")
+            auto_provision = _bool(raw_prov) if raw_prov is not None else False
+
+        max_workers = overrides.get("max_workers")
+        if max_workers is None:
+            raw_mw = _get("MAX_WORKERS")
+            max_workers = int(raw_mw) if raw_mw is not None else 8
+
+        parallel_writes = overrides.get("parallel_writes")
+        if parallel_writes is None:
+            raw_pw = _get("PARALLEL_WRITES")
+            parallel_writes = _bool(raw_pw) if raw_pw is not None else True
+
+        billing_mode = overrides.get(
+            "dynamodb_billing_mode", _get("DYNAMODB_BILLING_MODE", "PAY_PER_REQUEST")
+        )
+
+        kwargs: dict[str, Any] = {
+            "vector_bucket": bucket,
+            "index": index,
+            "table": table,
+            "dimension": dimension,
+            "distance_metric": distance_metric,
+            "region": region,
+            "auto_provision": auto_provision,
+            "max_workers": max_workers,
+            "parallel_writes": parallel_writes,
+            "dynamodb_billing_mode": billing_mode,
+        }
+        for k, v in overrides.items():
+            if k not in kwargs:
+                kwargs[k] = v
+
+        return cls(**kwargs)
+
+    def validate(self) -> None:
+        """Run pre-flight validation checks on configuration naming constraints."""
+        import re
+
+        # S3 vector bucket naming (3-63 chars, lowercase, numbers, hyphens)
+        if not re.match(r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", self.vector_bucket):
+            raise ValueError(
+                f"Invalid S3 vector bucket name {self.vector_bucket!r}. "
+                "Must be 3-63 characters, lowercase letters, numbers, or hyphens."
+            )
+
+        # Index naming: 1-64 chars, alphanumeric, hyphens, underscores
+        if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", self.index):
+            raise ValueError(
+                f"Invalid vector index name {self.index!r}. "
+                "Must be 1-64 characters containing letters, numbers, hyphens, or underscores."
+            )
+
+        # DynamoDB table naming: 3-255 chars, alphanumeric, hyphens, underscores, dots
+        if not re.match(r"^[a-zA-Z0-9_.-]{3,255}$", self.table):
+            raise ValueError(
+                f"Invalid DynamoDB table name {self.table!r}. "
+                "Must be 3-255 characters containing letters, numbers, hyphens, underscores, or dots."
+            )
+

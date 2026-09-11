@@ -29,9 +29,7 @@ from .models import SearchResult
 
 
 def _signature(namespace: str, top_k: int, filter: dict | None) -> str:
-    payload = json.dumps(
-        {"ns": namespace, "k": top_k, "f": filter or {}}, sort_keys=True
-    )
+    payload = json.dumps({"ns": namespace, "k": top_k, "f": filter or {}}, sort_keys=True)
     return hashlib.sha256(payload.encode()).hexdigest()[:24]
 
 
@@ -47,8 +45,11 @@ def _serialize(results: list[SearchResult]) -> str:
 def _deserialize(blob: str) -> list[SearchResult]:
     return [
         SearchResult(
-            id=d["id"], score=d["score"], distance=d.get("distance"),
-            text=d.get("text"), metadata=d.get("metadata", {}),
+            id=d["id"],
+            score=d["score"],
+            distance=d.get("distance"),
+            text=d.get("text"),
+            metadata=d.get("metadata", {}),
         )
         for d in json.loads(blob)
     ]
@@ -66,8 +67,7 @@ def _deep_size(value, seen: set[int] | None = None) -> int:
     size = sys.getsizeof(value)
     if isinstance(value, dict):
         return size + sum(
-            _deep_size(key, seen) + _deep_size(item, seen)
-            for key, item in value.items()
+            _deep_size(key, seen) + _deep_size(item, seen) for key, item in value.items()
         )
     if isinstance(value, (list, tuple, set, frozenset)):
         return size + sum(_deep_size(item, seen) for item in value)
@@ -82,12 +82,10 @@ class BaseCache(ABC):
         self.misses: int = 0
 
     @abstractmethod
-    def get(self, namespace, query_vector, top_k, filter) -> list[SearchResult] | None:
-        ...
+    def get(self, namespace, query_vector, top_k, filter) -> list[SearchResult] | None: ...
 
     @abstractmethod
-    def put(self, namespace, query_vector, top_k, filter, results) -> None:
-        ...
+    def put(self, namespace, query_vector, top_k, filter, results) -> None: ...
 
     def stats(self) -> dict[str, int | float]:
         """Return cache hit and miss statistics."""
@@ -212,9 +210,7 @@ class DynamoDBCache(BaseCache):
         return f"__cache__#{_signature(namespace, top_k, filter)}#{_vec_key(query_vector)}"
 
     def get(self, namespace, query_vector, top_k, filter):
-        resp = self._table.get_item(
-            Key={"pk": self._pk(namespace, query_vector, top_k, filter)}
-        )
+        resp = self._table.get_item(Key={"pk": self._pk(namespace, query_vector, top_k, filter)})
         item = resp.get("Item")
         if not item:
             self.misses += 1

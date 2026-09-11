@@ -34,6 +34,10 @@ export interface TraceEvent {
   status: string;
   error: string | null;
   query_preview: string | null;
+  embed_ms?: number | null;
+  ann_ms?: number | null;
+  hydrate_ms?: number | null;
+  rerank_ms?: number | null;
 }
 
 export interface TraceFilters {
@@ -41,3 +45,14 @@ export interface TraceFilters {
   status?: string;
   namespace?: string;
 }
+
+export interface EvalRun {
+  dataset: string;
+  ks: number[];
+  n_queries: number;
+  mrr: number;
+  recall: Record<string, number>;  // "1" → 0.5, "5" → 0.8, etc.
+  ndcg: Record<string, number>;
+  timestamp: number;               // unix epoch seconds
+}
+

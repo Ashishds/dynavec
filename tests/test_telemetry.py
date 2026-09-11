@@ -78,7 +78,7 @@ def test_aggregate_cache_hit_rate_and_errors():
     for e in evs:
         e.ts = now - 1
     agg = aggregate(evs, window_seconds=3600, now=now)
-    assert agg["cache_total"] == 3          # None excluded
+    assert agg["cache_total"] == 3  # None excluded
     assert agg["cache_hits"] == 2
     assert agg["cache_hit_rate"] == round(100 * 2 / 3, 1)
     assert agg["error_rate"] == round(100 * 1 / 5, 2)
@@ -119,3 +119,149 @@ def test_empty_aggregate_is_safe():
     assert agg["total"] == 0
     assert agg["p95"] == 0.0
     assert agg["cache_hit_rate"] is None
+
+
+# ----------------------------------------------------------------- hooks
+
+
+class _SpyHook:
+    """Test hook that records all calls for assertion."""
+
+    def __init__(self):
+        self.search_starts = []
+        self.search_ends = []
+        self.cache_hits = []
+        self.upserts = []
+        self.errors = []
+
+    def on_search_start(self, namespace, top_k):
+        self.search_starts.append((namespace, top_k))
+
+    def on_search_end(self, event):
+        self.search_ends.append(event)
+
+    def on_cache_hit(self, namespace, top_k):
+        self.cache_hits.append((namespace, top_k))
+
+    def on_upsert(self, namespace, count):
+        self.upserts.append((namespace, count))
+
+    def on_error(self, op, error):
+        self.errors.append((op, error))
+
+
+def test_hook_on_search_end_fires():
+    r = TelemetryRecorder()
+    spy = _SpyHook()
+    r.add_hook(spy)
+    ev = r.new_event("search", namespace="kb", latency_ms=5.0)
+    r.record(ev)
+    assert len(spy.search_ends) == 1
+    assert spy.search_ends[0].namespace == "kb"
+
+
+def test_hook_on_cache_hit_fires():
+    r = TelemetryRecorder()
+    spy = _SpyHook()
+    r.add_hook(spy)
+    ev = r.new_event("search", namespace="ns", cache_hit=True, top_k=10)
+    r.record(ev)
+    assert len(spy.cache_hits) == 1
+    assert spy.cache_hits[0] == ("ns", 10)
+
+
+def test_hook_on_error_fires():
+    r = TelemetryRecorder()
+    spy = _SpyHook()
+    r.add_hook(spy)
+    ev = r.new_event("search", status="error", error="boom")
+    r.record(ev)
+    assert len(spy.errors) == 1
+    assert spy.errors[0] == ("search", "boom")
+
+
+def test_hook_remove():
+    r = TelemetryRecorder()
+    spy = _SpyHook()
+    r.add_hook(spy)
+    r.remove_hook(spy)
+    r.record(r.new_event("search"))
+    assert len(spy.search_ends) == 0
+
+
+def test_hook_error_does_not_crash_recorder():
+    """A hook that raises should be silently swallowed."""
+
+    class BrokenHook:
+        def on_search_end(self, event):
+            raise RuntimeError("hook crashed!")
+
+    r = TelemetryRecorder()
+    r.add_hook(BrokenHook())
+    r.record(r.new_event("search"))  # should not raise
+    assert len(r.events()) == 1
+
+
+def test_partial_hook_only_implemented_methods():
+    """A hook that only implements on_search_end should not crash."""
+
+    class PartialHook:
+        def __init__(self):
+            self.called = False
+
+        def on_search_end(self, event):
+            self.called = True
+
+    r = TelemetryRecorder()
+    hook = PartialHook()
+    r.add_hook(hook)
+    r.record(r.new_event("search"))
+    assert hook.called
+
+
+def test_multiple_hooks():
+    r = TelemetryRecorder()
+    spy1 = _SpyHook()
+    spy2 = _SpyHook()
+    r.add_hook(spy1)
+    r.add_hook(spy2)
+    r.record(r.new_event("search"))
+    assert len(spy1.search_ends) == 1
+    assert len(spy2.search_ends) == 1
+
+
+# ------------------------------------------------ timing breakdown fields
+
+
+def test_timing_fields_in_event():
+    r = TelemetryRecorder()
+    ev = r.new_event(
+        "search",
+        embed_ms=1.5,
+        ann_ms=20.0,
+        hydrate_ms=3.0,
+        rerank_ms=0.5,
+    )
+    assert ev.embed_ms == 1.5
+    assert ev.ann_ms == 20.0
+    assert ev.hydrate_ms == 3.0
+    assert ev.rerank_ms == 0.5
+
+
+def test_timing_fields_default_none():
+    r = TelemetryRecorder()
+    ev = r.new_event("search")
+    assert ev.embed_ms is None
+    assert ev.ann_ms is None
+    assert ev.hydrate_ms is None
+    assert ev.rerank_ms is None
+
+
+def test_to_dict_includes_timing():
+    r = TelemetryRecorder()
+    ev = r.new_event("search", embed_ms=2.0, ann_ms=15.0)
+    d = ev.to_dict()
+    assert "embed_ms" in d
+    assert d["embed_ms"] == 2.0
+    assert d["ann_ms"] == 15.0
+    assert d["hydrate_ms"] is None

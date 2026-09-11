@@ -63,9 +63,7 @@ def as_langchain_tool(source, *, name: str = "dynavec_search", **kw) -> Any:
         raise MissingDependencyError("as_langchain_tool", "langchain-core", "langchain") from exc
 
     fn = make_retriever_fn(source, **kw)
-    return StructuredTool.from_function(
-        func=fn, name=name, description=fn.__doc__
-    )
+    return StructuredTool.from_function(func=fn, name=name, description=fn.__doc__)
 
 
 def as_crewai_tool(source, *, name: str = "dynavec_search", **kw) -> Any:

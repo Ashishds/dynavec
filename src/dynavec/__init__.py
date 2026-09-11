@@ -24,6 +24,8 @@ from .cache import BaseCache, DynamoDBCache, RedisCache, SemanticCache
 from .client import Dynavec
 from .config import DynavecConfig
 from .credentials import AWSCredentials
+from .eval import EvalDataset, EvalQuery, EvalResult, run_eval
+from .eval_judge import BedrockJudge, JudgeScore, LLMJudge, OpenAIJudge
 from .exceptions import (
     ConfigurationError,
     DimensionMismatchError,
@@ -34,6 +36,7 @@ from .exceptions import (
     ProvisioningError,
 )
 from .graph import GraphStore
+from .migration import MigrationReport, PineconeMigrator
 from .models import Document, SearchResult, UpsertResult
 from .namespace import NamespaceView
 from .quantization import ProductQuantizer
@@ -41,6 +44,7 @@ from .retrieval import (
     maximal_marginal_relevance,
     reciprocal_rank_fusion,
 )
+from .scalar_quantization import ScalarQuantizer
 from .spfresh import (
     Partition,
     SPFreshConfig,
@@ -49,7 +53,7 @@ from .spfresh import (
 )
 from .transforms import LambdaTransform, TransformContext, TransformPipeline
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "Dynavec",
@@ -60,6 +64,7 @@ __all__ = [
     "UpsertResult",
     "NamespaceView",
     "ProductQuantizer",
+    "ScalarQuantizer",
     "GraphStore",
     "BaseCache",
     "SemanticCache",
@@ -74,6 +79,18 @@ __all__ = [
     "TransformPipeline",
     "TransformContext",
     "LambdaTransform",
+    # eval & quality
+    "EvalDataset",
+    "EvalQuery",
+    "EvalResult",
+    "run_eval",
+    "LLMJudge",
+    "JudgeScore",
+    "OpenAIJudge",
+    "BedrockJudge",
+    # migration
+    "PineconeMigrator",
+    "MigrationReport",
     # exceptions
     "DynavecError",
     "ConfigurationError",

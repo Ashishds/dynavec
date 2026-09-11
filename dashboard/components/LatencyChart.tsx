@@ -23,7 +23,7 @@ export default function LatencyChart({ m }: { m: Metrics }) {
                 <span className="font-mono" style={{ color }}>{label}</span>
                 <span className="font-mono">{Number(v).toFixed(1)} ms</span>
               </div>
-              <div className="h-2.5 bg-[#f0ece6] rounded-full">
+              <div className="h-2.5 bg-chart-track rounded-full">
                 <div className="h-full rounded-full" style={{ width: `${(v / max) * 100}%`, background: color }} />
               </div>
             </div>

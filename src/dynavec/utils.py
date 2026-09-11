@@ -26,6 +26,7 @@ def decode_key_component(value: str) -> str:
     """Restore a component produced by :func:`encode_key_component`."""
     return value.replace("%23", KEY_SEPARATOR).replace("%25", "%")
 
+
 # botocore error codes that are safe to retry (throttling / transient).
 _RETRYABLE_CODES = frozenset(
     {

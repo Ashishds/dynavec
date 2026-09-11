@@ -24,9 +24,7 @@ class Document:
 
     def __post_init__(self) -> None:
         if self.text is None and self.vector is None:
-            raise ValueError(
-                f"Document {self.id!r} must have either 'text' or 'vector' set."
-            )
+            raise ValueError(f"Document {self.id!r} must have either 'text' or 'vector' set.")
 
 
 @dataclass

@@ -81,7 +81,11 @@ class FakeS3(client_mod.S3VectorsStore):
             yield hits[i : i + chunk_size]
 
     def get_vectors(self, keys, return_metadata=False):
-        return {k: {"vector": self._store[k][0], "metadata": self._store[k][1]} for k in keys if k in self._store}
+        return {
+            k: {"vector": self._store[k][0], "metadata": self._store[k][1]}
+            for k in keys
+            if k in self._store
+        }
 
     def delete_vectors(self, keys):
         for k in keys:
@@ -130,10 +134,7 @@ class FakeGraph(client_mod.GraphStore):
         node = self.get_node(ns, entity_id)
         if not node:
             return []
-        return [
-            e["target"] for e in node["edges"]
-            if relation is None or e["relation"] == relation
-        ]
+        return [e["target"] for e in node["edges"] if relation is None or e["relation"] == relation]
 
     def get_docs(self, ns, entity_ids):
         seen, out = set(), []
@@ -200,6 +201,7 @@ def test_dimension_mismatch_raises(db):
     with pytest.raises(DimensionMismatchError):
         db.upsert([Document(id="x", vector=[0.1, 0.2])])  # wrong dim (2 != 8)
 
+
 class WrongOutputEmbedder(HashEmbedder):
     def embed_documents(self, texts):
         return [[0.1, 0.2] for _ in texts]
@@ -234,7 +236,7 @@ def test_ns_tag_present_in_s3(db):
     db.upsert([Document(id="1", text="hello")], namespace="ns9")
     # reach into the fake to confirm the namespace tag was written
     store = db._vectors._store
-    (_, meta), = (v for k, v in store.items())
+    ((_, meta),) = (v for k, v in store.items())
     assert meta[NS_METADATA_KEY] == "ns9"
 
 
@@ -244,7 +246,7 @@ def test_update_metadata_merge_preserves_vector(db):
     db.update("1", metadata={"rating": 5})
     after_meta = db.get(["1"])[0].metadata
     assert after_meta["cat"] == "food"  # preserved
-    assert after_meta["rating"] == 5    # added
+    assert after_meta["rating"] == 5  # added
     # vector unchanged because neither text nor vector was updated
     assert db._vectors._store["default#1"][0] == before
 
@@ -266,9 +268,7 @@ def test_update_missing_raises(db):
 
 
 def test_search_stream_yields_incrementally(db):
-    db.upsert(
-        [Document(id=str(i), text=f"apple item {i}") for i in range(5)]
-    )
+    db.upsert([Document(id=str(i), text=f"apple item {i}") for i in range(5)])
     gen = db.search_stream("apple", top_k=4)
     first = next(gen)
     assert first.text is not None
@@ -450,7 +450,7 @@ def test_search_telemetry_marks_cache_hit(db):
     db._telemetry = rec
     db._cache = SemanticCache(threshold=0.99)
     db.upsert([Document(id="1", text="apple pie")])
-    db.search("apple pie", top_k=3)   # miss -> populates cache
-    db.search("apple pie", top_k=3)   # hit
+    db.search("apple pie", top_k=3)  # miss -> populates cache
+    db.search("apple pie", top_k=3)  # hit
     hits = [e.cache_hit for e in rec.events()]
     assert True in hits and False in hits

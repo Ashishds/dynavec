@@ -79,3 +79,21 @@ def test_doctor_requires_bucket_and_index_together(monkeypatch, capsys):
 def test_main_without_command_prints_help(capsys):
     assert cli.main([]) == 0
     assert "doctor" in capsys.readouterr().out
+
+
+def test_dashboard_command(monkeypatch):
+    called = {}
+
+    def fake_serve(recorder, port, host, eval_dir):
+        called["port"] = port
+        called["host"] = host
+        called["eval_dir"] = eval_dir
+
+    import dynavec.dashboard
+
+    monkeypatch.setattr(dynavec.dashboard, "serve", fake_serve)
+    result = cli.main(["dashboard", "--port", "9000", "--host", "0.0.0.0", "--eval-dir", "./evals"])
+    assert result == 0
+    assert called["port"] == 9000
+    assert called["host"] == "0.0.0.0"
+    assert called["eval_dir"] == "./evals"

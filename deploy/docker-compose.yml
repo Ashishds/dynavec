@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  dashboard:
+    build:
+      context: ../dashboard
+      dockerfile: Dockerfile
+    ports:
+      - "8778:8778"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://api:8778
+      - DYNAVEC_DASHBOARD_TOKEN=${DYNAVEC_DASHBOARD_TOKEN:-}
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - DYNAVEC_VECTOR_BUCKET=${DYNAVEC_VECTOR_BUCKET:-dynavec-vectors}
+      - DYNAVEC_INDEX=${DYNAVEC_INDEX:-main}
+      - DYNAVEC_TABLE=${DYNAVEC_TABLE:-dynavec_documents}
+      - DYNAVEC_DIMENSION=${DYNAVEC_DIMENSION:-1536}
+      - DYNAVEC_DASHBOARD_TOKEN=${DYNAVEC_DASHBOARD_TOKEN:-}
+    restart: unless-stopped

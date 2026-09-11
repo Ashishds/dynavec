@@ -36,7 +36,9 @@ def _resolve_embedder(env: Mapping[str, str]):
     if embedder_type == "openai":
         from ..embeddings.openai import OpenAIEmbedder
 
-        return OpenAIEmbedder(model=model or "text-embedding-3-small", api_key=env.get("OPENAI_API_KEY"))
+        return OpenAIEmbedder(
+            model=model or "text-embedding-3-small", api_key=env.get("OPENAI_API_KEY")
+        )
     if embedder_type == "gemini":
         from ..embeddings.gemini import GeminiEmbedder
 
@@ -217,7 +219,9 @@ def create_mcp_server(db: Dynavec | None = None, name: str = "dynavec"):
 
 def main(argv: list[str] | None = None) -> int:
     """Run the FastMCP server with stdio or SSE transport."""
-    parser = argparse.ArgumentParser(prog="dynavec mcp", description="Run the dynavec FastMCP server.")
+    parser = argparse.ArgumentParser(
+        prog="dynavec mcp", description="Run the dynavec FastMCP server."
+    )
     parser.add_argument(
         "--transport",
         choices=["stdio", "sse"],

@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  dynavec-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dynavec-prod
+    ports:
+      - "8779:8779"
+      - "3000:3000"
+    environment:
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - DYNAVEC_TABLE=${DYNAVEC_TABLE:-dynavec_docs}
+      - DYNAVEC_VECTOR_BUCKET=${DYNAVEC_VECTOR_BUCKET:-dynavec-vectors-212919533030}
+      - DYNAVEC_INDEX=${DYNAVEC_INDEX:-docs-index}
+      - NEXT_PUBLIC_DYNAVEC_API=http://127.0.0.1:8779
+    restart: unless-stopped

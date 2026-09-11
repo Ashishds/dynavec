@@ -1,0 +1,58 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main, development, local-dynavec-complete]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Install Dashboard Dependencies
+        run: npm --prefix dashboard ci
+
+      - name: Build Static Dashboard
+        run: |
+          export NEXT_PUBLIC_BASE_PATH="/dynavec/dashboard"
+          npm --prefix dashboard run build
+
+      - name: Assemble Static Site
+        run: |
+          mkdir -p _site
+          # Copy landing page to root
+          cp -r opensource/dynavec/* _site/
+          # Copy static dashboard export under /dashboard subpath
+          mkdir -p _site/dashboard
+          cp -r dashboard/out/* _site/dashboard/
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

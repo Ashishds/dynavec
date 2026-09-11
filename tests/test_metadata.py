@@ -203,4 +203,3 @@ def test_split_text_mirror_optional():
 def test_build_s3_filter_operator_combinations(user_filter, namespace, expected):
     """Table-driven tests covering $and, $or, $in, $gte and other operators."""
     assert build_s3_filter(user_filter, namespace) == expected
-

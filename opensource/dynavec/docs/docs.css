@@ -22,14 +22,17 @@
 .doc h2::before { content: ""; display: block; width: 34px; height: 3px; background: var(--accent); margin-bottom: 14px; }
 .doc h3 { font-size: 17px; margin: 26px 0 8px; }
 .doc p, .doc li { font-size: 16px; color: #322c27; }
+html.dark .doc p, html.dark .doc li { color: #c8c0b6; }
 .doc a { color: var(--accent-ink); text-decoration: none; border-bottom: 1px solid var(--line); }
 .doc a:hover { border-bottom-color: var(--accent); }
 .doc code { font-family: var(--mono); font-size: 14px; background: var(--accent-soft); color: var(--accent-ink); padding: 1px 6px; border-radius: 4px; }
 .doc .code { border: 1px solid var(--line); border-radius: 8px; margin: 16px 0; box-shadow: var(--shadow); }
 .doc .code code { background: none; color: #2b2620; padding: 0; }
+html.dark .doc .code code { color: var(--fg); }
 .doc ul, .doc ol { padding-left: 22px; }
 .doc li { margin: 5px 0; }
 .doc .callout { border: 1px solid var(--line); border-left: 3px solid var(--accent); background: var(--surface); padding: 14px 18px; border-radius: 8px; margin: 18px 0; font-size: 15px; color: #322c27; }
+html.dark .doc .callout { color: #c8c0b6; }
 .doc .callout strong { color: var(--accent-ink); }
 .doc__params { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14.5px; }
 .doc__params th, .doc__params td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }

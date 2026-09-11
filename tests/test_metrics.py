@@ -11,9 +11,9 @@ def data():
     q = np.array([1.0, 0.0, 0.0], dtype=np.float32)
     mat = np.array(
         [
-            [1.0, 0.0, 0.0],   # identical
-            [0.0, 1.0, 0.0],   # orthogonal
-            [2.0, 0.0, 0.0],   # same direction, larger magnitude
+            [1.0, 0.0, 0.0],  # identical
+            [0.0, 1.0, 0.0],  # orthogonal
+            [2.0, 0.0, 0.0],  # same direction, larger magnitude
         ],
         dtype=np.float32,
     )
