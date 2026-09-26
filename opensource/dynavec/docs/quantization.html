@@ -58,13 +58,18 @@
 </ul></div>
 <div class="side__group"><p class="side__title">Advanced</p><ul class="side__list">
 <li><a href="knowledge-graph.html">Knowledge graph</a></li>
+<li><a href="hot-tier.html">In-memory hot tier</a></li>
 <li><a href="quantization.html" class="is-current">Product quantization</a></li>
 <li><a href="concurrency.html">Concurrency</a></li>
 <li><a href="credentials.html">Credentials & IAM</a></li>
 </ul></div>
 <div class="side__group"><p class="side__title">Ecosystem</p><ul class="side__list">
 <li><a href="integrations.html">Framework integrations</a></li>
+<li><a href="dashboard.html">Telemetry dashboard</a></li>
 <li><a href="benchmarking.html">Benchmarking</a></li>
+</ul></div>
+<div class="side__group"><p class="side__title">About</p><ul class="side__list">
+<li><a href="release-notes.html">Release notes</a></li>
 </ul></div>
 </nav>
     <main class="doc">
@@ -80,14 +85,18 @@ the vectors <em>dynavec</em> caches — the in-memory hot tier and local candida
 pq = ProductQuantizer(m=96, nbits=8).fit(training_vectors)   # 768-d -> 96 bytes (32x)
 codes = pq.encode(vectors)          # uint8 codes
 dists = pq.asymmetric_distances(query, codes)   # ADC, fast at scale
-print(pq.reconstruction_error(vectors))</code></pre>
+print(pq.reconstruction_error(vectors))
+
+# Persist and reload codebooks across restarts
+pq.save("pq_model.npz")
+loaded_pq = ProductQuantizer.load("pq_model.npz")</code></pre>
 <table class="doc__params">
 <tr><th>Param</th><th>Meaning</th></tr>
 <tr><td><code>m</code></td><td>Number of subspaces; must divide the vector dimension.</td></tr>
 <tr><td><code>nbits</code></td><td>Bits per subquantizer (8 → 256 centroids, uint8 codes).</td></tr>
 </table>
 
-      <div class="doc__next"><a href="knowledge-graph.html"><span>Previous</span>Knowledge graph</a><a href="concurrency.html" style="text-align:right"><span>Next</span>Concurrency</a></div>
+      <div class="doc__next"><a href="hot-tier.html"><span>Previous</span>In-memory hot tier</a><a href="concurrency.html" style="text-align:right"><span>Next</span>Concurrency</a></div>
     </main>
   </div>
 

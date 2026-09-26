@@ -2,7 +2,8 @@
 (function () {
   "use strict";
 
-  var REPO = "codeforstartups/dynavec";
+  var REPO = "Ashishds/dynavec";
+  var UPSTREAM_REPO = "codeforstartups/dynavec";
 
   /* ---- theme management (dark / light) ---- */
   var html = document.documentElement;
@@ -89,12 +90,12 @@
     });
   }
 
-  /* ---- live GitHub star count ---- */
+  /* ---- live GitHub star count (fetch from upstream repo for accurate count) ---- */
   function formatStars(n) {
     if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1) + "k";
     return String(n);
   }
-  fetch("https://api.github.com/repos/" + REPO)
+  fetch("https://api.github.com/repos/" + UPSTREAM_REPO)
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (data) {
       if (!data || data.stargazers_count == null) return;
@@ -104,6 +105,80 @@
       });
     })
     .catch(function () { /* offline / rate-limited */ });
+
+  /* ---- canvas node-network ambient background ---- */
+  (function () {
+    var canvas = document.getElementById("bg-canvas");
+    if (!canvas) return;
+    var ctx = canvas.getContext("2d");
+    var W, H, nodes, raf;
+    var NODE_COUNT = 55, LINK_DIST = 140, SPEED = 0.28;
+
+    function resize() {
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+
+    function mkNode() {
+      return {
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: (Math.random() - 0.5) * SPEED,
+        vy: (Math.random() - 0.5) * SPEED,
+        r: 1.6 + Math.random() * 1.4
+      };
+    }
+
+    function init() {
+      resize();
+      nodes = [];
+      for (var i = 0; i < NODE_COUNT; i++) nodes.push(mkNode());
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      var isDark = document.documentElement.classList.contains("dark") ||
+                   document.documentElement.getAttribute("data-theme") === "dark";
+      var nodeColor = isDark ? "rgba(99,120,255,0.55)" : "rgba(80,100,220,0.30)";
+      var lineColor = isDark ? "rgba(99,120,255," : "rgba(80,100,220,";
+
+      for (var i = 0; i < nodes.length; i++) {
+        var a = nodes[i];
+        a.x += a.vx; a.y += a.vy;
+        if (a.x < 0 || a.x > W) a.vx *= -1;
+        if (a.y < 0 || a.y > H) a.vy *= -1;
+
+        ctx.beginPath();
+        ctx.arc(a.x, a.y, a.r, 0, Math.PI * 2);
+        ctx.fillStyle = nodeColor;
+        ctx.fill();
+
+        for (var j = i + 1; j < nodes.length; j++) {
+          var b = nodes[j];
+          var dx = a.x - b.x, dy = a.y - b.y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < LINK_DIST) {
+            var alpha = (1 - dist / LINK_DIST) * (isDark ? 0.22 : 0.12);
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.strokeStyle = lineColor + alpha + ")";
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+          }
+        }
+      }
+      raf = requestAnimationFrame(draw);
+    }
+
+    init();
+    draw();
+    window.addEventListener("resize", function () {
+      cancelAnimationFrame(raf);
+      init();
+      draw();
+    }, { passive: true });
+  })();
 
   /* ---- minimal grayscale Python highlighter ---- */
   var KW = /\b(from|import|for|in|as|def|return|if|else|elif|not|and|or|None|True|False|with|class|lambda|print|is)\b/g;

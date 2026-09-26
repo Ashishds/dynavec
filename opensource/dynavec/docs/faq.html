@@ -58,13 +58,18 @@
 </ul></div>
 <div class="side__group"><p class="side__title">Advanced</p><ul class="side__list">
 <li><a href="knowledge-graph.html">Knowledge graph</a></li>
+<li><a href="hot-tier.html">In-memory hot tier</a></li>
 <li><a href="quantization.html">Product quantization</a></li>
 <li><a href="concurrency.html">Concurrency</a></li>
 <li><a href="credentials.html">Credentials & IAM</a></li>
 </ul></div>
 <div class="side__group"><p class="side__title">Ecosystem</p><ul class="side__list">
 <li><a href="integrations.html">Framework integrations</a></li>
+<li><a href="dashboard.html">Telemetry dashboard</a></li>
 <li><a href="benchmarking.html">Benchmarking</a></li>
+</ul></div>
+<div class="side__group"><p class="side__title">About</p><ul class="side__list">
+<li><a href="release-notes.html">Release notes</a></li>
 </ul></div>
 </nav>
     <main class="doc">
@@ -92,7 +97,7 @@
 <p>dynavec uses a two-store hybrid model for metadata:</p>
 <ul>
   <li><strong>Filterable metadata:</strong> Indexed directly in S3 Vectors for fast pre-filtering. Pass only the keys you need to filter on via <code>DynavecConfig(filterable_keys=[...])</code> (e.g. <code>["topic", "tenant_id", "year"]</code>).</li>
-  <li><strong>Document metadata &amp; text:</strong> The complete payload is stored in DynamoDB, subject to DynamoDB's standard <strong>400 KB per item</strong> limit.</li>
+  <li><strong>Document metadata &amp; text:</strong> The complete payload is stored in DynamoDB, subject to DynamoDB's standard <strong>400 KB per item</strong> limit. Oversized documents raise <code>ItemTooLargeError</code> before anything is written (see <a href="upsert.html">Upsert</a>).</li>
 </ul>
 
 <h3>What is the maximum <code>top_k</code> query limit?</h3>

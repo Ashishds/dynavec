@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Benchmarking · dynavec docs</title>
+  <title>Telemetry dashboard · dynavec docs</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -65,33 +65,52 @@
 </ul></div>
 <div class="side__group"><p class="side__title">Ecosystem</p><ul class="side__list">
 <li><a href="integrations.html">Framework integrations</a></li>
-<li><a href="dashboard.html">Telemetry dashboard</a></li>
-<li><a href="benchmarking.html" class="is-current">Benchmarking</a></li>
+<li><a href="dashboard.html" class="is-current">Telemetry dashboard</a></li>
+<li><a href="benchmarking.html">Benchmarking</a></li>
 </ul></div>
 <div class="side__group"><p class="side__title">About</p><ul class="side__list">
 <li><a href="release-notes.html">Release notes</a></li>
 </ul></div>
 </nav>
     <main class="doc">
-      <div class="doc__crumbs"><a href="../index.html">dynavec</a> / <a href="index.html">Docs</a> / Benchmarking</div>
-      <h1>Benchmarking</h1>
-      <p class="doc__sub">Recall, latency, and cost — with tables and charts.</p>
+      <div class="doc__crumbs"><a href="../index.html">dynavec</a> / <a href="index.html">Docs</a> / Telemetry dashboard</div>
+      <h1>Telemetry dashboard</h1>
+      <p class="doc__sub">A native, in-your-brand observability dashboard — a Langfuse-style view of real query telemetry.</p>
       
-<p>The suite measures recall@k and latency against a labeled dataset and models cost versus Pinecone,
-OpenSearch, Qdrant, Weaviate, and Milvus across dimensions and scale.</p>
-<pre class="code"><code>pip install "dynavec[benchmark]"
+<p>Attach a recorder to your client and every search is captured with latency, cache outcome,
+result count, and score stats. No simulated data.</p>
+<div class="callout">Live interactive preview: <a href="https://codeforstartups.github.io/dynavec/dashboard/" target="_blank" rel="noopener">codeforstartups.github.io/dynavec/dashboard</a> (landing-page theme).</div>
+<h2>1. Expose real telemetry</h2>
+<p>Attach a recorder to your client and serve the API:</p>
+<pre class="code"><code>from dynavec import Dynavec, DynavecConfig, SemanticCache
+from dynavec.telemetry import TelemetryRecorder
+from dynavec.dashboard import serve
 
-# recall + latency (local control, or real AWS)
-python -m benchmarks.run_benchmark --backend local --n 50000 --dim 384
-python -m benchmarks.run_benchmark --backend dynavec --bucket my-vectors \
-    --index bench --table dynavec_bench --n 100000 --dim 1536
+rec = TelemetryRecorder()
+db = Dynavec(cfg, embedder=emb, cache=SemanticCache(), telemetry=rec)
+# ... your app runs searches; the recorder fills automatically ...
+serve(rec, port=8779)          # JSON API at http://127.0.0.1:8779</code></pre>
+<h2>2. Run the dashboard</h2>
+<p>Points at that API; falls back to sample data if unset:</p>
+<pre class="code"><code>cd dashboard
+npm install
+NEXT_PUBLIC_DYNAVEC_API=http://127.0.0.1:8779 npm run dev   # http://localhost:3000</code></pre>
+<p>No AWS? <code>python examples/dashboard_demo.py</code> runs real searches against in-memory
+stand-ins and serves the API on <code>:8779</code> for the dashboard to read.</p>
+<h2>Tracing view</h2>
+<p>Shows a query-volume histogram, latency percentiles (p50/p95/p99), cache hit-rate, and a
+filterable traces table with per-trace drill-down:</p>
+<table class="doc__params">
+<tr><th>Panel</th><th>Shows</th></tr>
+<tr><td>KPI cards</td><td>Queries/min, p95 latency, cache hit rate, average results, error rate</td></tr>
+<tr><td>Query volume</td><td>Histogram of trace counts per time bucket</td></tr>
+<tr><td>Latency percentiles</td><td>p50 / p95 / p99 latency in ms</td></tr>
+<tr><td>Traces table</td><td>Every recorded <code>search</code>, <code>graph_search</code>, and <code>upsert</code> call — namespace, latency, results, cache hit/miss, rank strategy — filterable by op, status, and namespace</td></tr>
+</table>
+<img src="../images/dashboard_tracing.png" alt="Tracing view" class="doc__img" />
+<p>Click any row to open a detail drawer with per-call similarity scores, filter state, and error details.</p>
 
-# cost comparison + charts (dimensions 384-3072, 100K -> 1B vectors)
-python -m benchmarks.report --qpm 1_000_000</code></pre>
-<div class="callout">Cost figures are cost-model estimates from public list prices. Competitor recall/latency
-are representative until you run the live benchmark against your own account.</div>
-
-      <div class="doc__next"><a href="dashboard.html"><span>Previous</span>Telemetry dashboard</a><a href="release-notes.html" style="text-align:right"><span>Next</span>Release notes</a></div>
+      <div class="doc__next"><a href="integrations.html"><span>Previous</span>Framework integrations</a><a href="benchmarking.html" style="text-align:right"><span>Next</span>Benchmarking</a></div>
     </main>
   </div>
 
