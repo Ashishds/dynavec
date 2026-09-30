@@ -91,6 +91,7 @@ dev = [
     "mypy>=1.11,<2.0",
     "ruff>=0.6",
     "pre-commit>=3.5",
+    "syrupy>=6.0; python_version >= '3.10'",
 ]
 benchmark = [
     "pandas>=2.0",
@@ -115,6 +116,7 @@ include = ["src/dynavec/py.typed"]
 testpaths = ["tests"]
 addopts = "-q"
 asyncio_mode = "auto"
+pythonpath = ["."]
 
 [tool.ruff]
 line-length = 100
