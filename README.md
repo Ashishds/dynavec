@@ -503,7 +503,7 @@ db.graph_delete_node("globex", namespace="kb")
 
 ## Status
 
-**v0.6.0 (current)** — adds **query-expansion retrievers** (Multi-Query + HyDE), **learned RRF fusion weights**, **OPQ + scalar quantization**, **cross-encoder reranking**, **hybrid graph+ANN search** and graph shortest-path, **`search().explain()`**, **cache invalidation on write**, an **embedding cache**, **`S3Source`** ingestion, DynamoDB **gzip** for large text, LlamaIndex **metadata-filter translation**, an **OpenAI Assistants** tool, and CLI **namespace export/import** — on top of the v0.5 feature set and the v0.1 hybrid core.
+**v0.7.0 (current)** — adds a **native async client** (`AsyncDynavec`), a **BM25 lexical retriever + dense hybrid fusion** (`hybrid_search`), **per-document TTL** with automatic provisioning, a **Semantic Kernel** connector, concurrent **`search_many()`**, **optimistic concurrency** on `update()`, **weighted graph edges**, **client-side rate limiting**, and parallelized `put_vectors` ingest — plus a graph metadata-preservation fix — on top of the v0.6 feature set and the v0.1 hybrid core.
 
 See the full history in **[CHANGELOG.md](CHANGELOG.md)**, the browsable **[Release notes](https://codeforstartups.github.io/dynavec/docs/release-notes.html)** page, or the **[GitHub Releases](https://github.com/codeforstartups/dynavec/releases)** tab.
 

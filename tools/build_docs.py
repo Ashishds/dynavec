@@ -845,6 +845,31 @@ uv pip install --upgrade dynavec""") + """
 and every version is a
 <a href="https://github.com/codeforstartups/dynavec/releases">GitHub Release</a>.</p>
 
+<h2 id="v0-7-0">0.7.0 <span class="doc__sub" style="font-weight:400">&mdash; 2026-10-01</span></h2>
+<p>Concurrency and scale: a native async client, a lexical/hybrid retrieval path, per-document TTL, a new framework connector, and a graph data-loss fix.</p>
+<h3>Added</h3>
+<ul>
+  <li><strong>Native async client</strong> &mdash; <code>AsyncDynavec</code> with <code>async</code>/<code>await</code>
+      <code>upsert</code> / <code>search</code> / <code>get</code> / <code>delete</code> for concurrent agent and web workloads.</li>
+  <li><strong>BM25 lexical + dense hybrid</strong> &mdash; <code>BM25Retriever</code>, <code>BM25HybridRetriever</code>,
+      and <code>db.hybrid_search()</code> fusing dense ANN and sparse BM25 with Reciprocal Rank Fusion.</li>
+  <li><strong>Per-document TTL</strong> &mdash; <code>ttl_seconds=</code> on <code>upsert()</code>/<code>update()</code>
+      with automatic DynamoDB TTL provisioning.</li>
+  <li><strong>Semantic Kernel connector</strong> &mdash; <code>DynavecStore</code> / <code>DynavecCollection</code>
+      implementing Microsoft Semantic Kernel's vector-store interface.</li>
+  <li><strong><code>search_many()</code></strong> &mdash; run several queries against a namespace concurrently.</li>
+  <li><strong>Optimistic concurrency</strong> on <code>update()</code> (<code>expected_version=</code>,
+      <code>ConflictError</code>); <strong>weighted graph edges</strong>; <strong>client-side rate limiting</strong>.</li>
+</ul>
+<h3>Changed</h3>
+<ul>
+  <li>Parallelized <code>put_vectors</code> across batches for higher ingest throughput; strict mypy in CI.</li>
+</ul>
+<h3>Fixed</h3>
+<ul>
+  <li><code>add_edge()</code> / <code>link_docs()</code> no longer wipe an existing node's <code>ntype</code>/<code>props</code>.</li>
+</ul>
+
 <h2 id="v0-6-0">0.6.0 <span class="doc__sub" style="font-weight:400">&mdash; 2026-09-25</span></h2>
 <p>A large release: new retrieval strategies, quantization methods, graph and cache capabilities, and more integrations.</p>
 <h3>Added</h3>

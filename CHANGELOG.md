@@ -5,16 +5,47 @@ All notable changes to dynavec are documented here. This project adheres to
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-01
+
+Concurrency and scale: a native async client, a lexical/hybrid retrieval path,
+per-document TTL, a new framework connector, and a graph data-loss fix.
+
 ### Added
+- **Native async client** (#270) — `AsyncDynavec` offers `async`/`await` `upsert` / `search` /
+  `get` / `delete` built on non-blocking I/O, so agent and web workloads can fan out
+  concurrent calls without thread pools.
+- **BM25 lexical retriever + dense hybrid fusion** (#233, #264) — `BM25Retriever` for pure
+  lexical search and `BM25HybridRetriever` / `db.hybrid_search()` combining dense ANN and
+  sparse BM25 via Reciprocal Rank Fusion, with tunable `dense_weight` / `sparse_weight`.
+- **Per-document TTL + automatic table provisioning** (#22) — pass `ttl_seconds=` to `upsert()`
+  / `update()` for DynamoDB-native expiry; the TTL attribute is provisioned automatically.
+- **Semantic Kernel vector store connector** (#69) — `DynavecStore` / `DynavecCollection`
+  implementing Microsoft Semantic Kernel's `VectorStore` interface, including lambda-filter
+  translation to the S3 Vectors dialect.
+- **`search_many()`** (#258) — run several queries concurrently against a namespace in one call.
 - **Optimistic concurrency on `update()`** (#24) — each update stores a `version` on the
   DynamoDB item and writes with a `ConditionExpression`, so a concurrent change raises
   `ConflictError` (nothing written) instead of being silently overwritten. Pass
   `expected_version=` to guard across your own read/update cycle; `UpsertResult.version`
   returns the new version. Plain `upsert()` stays last-writer-wins and resets the version.
+- **Weighted graph edge properties** (#268) — `add_edge()` accepts `weight` and `props`,
+  stored on the edge and surfaced through graph traversal.
+- **Client-side rate limiting** (#262) — opt-in token-bucket throttling of outbound AWS calls
+  to stay under account limits.
 
 ### Changed
 - `update()` now writes DynamoDB before S3 Vectors (previously in parallel) so a conflict
   leaves both stores untouched, and reads the document with a strongly consistent `GetItem`.
+- **Parallelized `put_vectors`** (#259) — S3 Vectors writes fan out across batches with a
+  thread pool for higher ingest throughput.
+- **Strict mypy** now runs in CI (#207) and the package ships type hints throughout.
+
+### Fixed
+- **Graph node metadata preservation** (#271) — `add_edge()` / `link_docs()` no longer wipe an
+  existing node's `ntype` and `props`; unspecified attributes are preserved via
+  `if_not_exists`, while explicit values still overwrite (#272).
+- **Markdown front-matter date normalization** on ingest (#253).
+- Cross-encoder reranker type-narrowing fix (#254).
 
 ## [0.6.0] - 2026-09-25
 
