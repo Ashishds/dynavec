@@ -501,6 +501,19 @@ db.graph_delete_edge("acme", "competes_with", "globex", namespace="kb", bidirect
 db.graph_delete_node("globex", namespace="kb")
 ```
 
+## Ecosystem
+
+dynavec started as a vector database, and it's growing into a full agent stack that runs inside your own cloud account. The plan has four parts:
+
+| Project | Tagline | What it covers | Status |
+|---------|---------|----------------|--------|
+| dynavec | Remember | The vector database: S3 Vectors for search, DynamoDB for documents, plus caching, GraphRAG and hybrid retrieval | Available |
+| dynaflow | Build & run | An orchestration engine for agents, with a visual builder | Planned ([#273](https://github.com/codeforstartups/dynavec/issues/273)) |
+| dynalogs | Observe | Traces, logs, run history and metrics, kept in your own account | Early version: the [observability dashboard](#observability-dashboard) ([#274](https://github.com/codeforstartups/dynavec/issues/274)) |
+| dynaevals | Measure & improve | Retrieval and RAG metrics, test datasets and CI checks | Retrieval metrics available ([#275](https://github.com/codeforstartups/dynavec/issues/275)) |
+
+The roadmap is tracked in [#276](https://github.com/codeforstartups/dynavec/issues/276). It's a proposed order rather than a fixed schedule, and help is welcome on any of the linked issues. See [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
+
 ## Status
 
 **v0.7.0 (current)** — adds a **native async client** (`AsyncDynavec`), a **BM25 lexical retriever + dense hybrid fusion** (`hybrid_search`), **per-document TTL** with automatic provisioning, a **Semantic Kernel** connector, concurrent **`search_many()`**, **optimistic concurrency** on `update()`, **weighted graph edges**, **client-side rate limiting**, and parallelized `put_vectors` ingest — plus a graph metadata-preservation fix — on top of the v0.6 feature set and the v0.1 hybrid core.
