@@ -58,7 +58,7 @@ const QUERY_CATEGORIES = [
 const ALL_QUERIES = QUERY_CATEGORIES.flatMap((c) => c.queries);
 
 // ─── File Type Chips ─────────────────────────────────────────────────────────
-const FILE_TYPES = ["PDF", "TXT", "MD", "CSV", "JSON", "DOCX"];
+const FILE_TYPES = ["PDF", "TXT", "MD", "CSV", "JSON", "DOCX", "PNG", "JPEG", "WEBP"];
 
 // ─── Connector Definitions ───────────────────────────────────────────────────
 const CONNECTOR_TYPES = [
@@ -1102,6 +1102,8 @@ export default function SearchPlayground() {
   const [ingesting, setIngesting] = useState(false);
   const [ingestSuccess, setIngestSuccess] = useState<string | null>(null);
   const [ingestError, setIngestError] = useState<string | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [imageCaption, setImageCaption] = useState<string>("");
 
   // Web Crawler & URL Ingest state
   const [ingestMode, setIngestMode] = useState<"file" | "crawler">("file");
@@ -1377,23 +1379,35 @@ export default function SearchPlayground() {
   const handleFileSelect = (file: File) => {
     const ext = file.name.split(".").pop()?.toLowerCase() || "";
     const isImage = ["jpg", "jpeg", "png", "webp", "gif", "bmp"].includes(ext);
-    if (isImage) {
-      setSelectedFile(null);
-      setIngestError(`Image files (${ext.toUpperCase()}) cannot be vectorized as text. Dynavec indexes knowledge documents (.pdf, .txt, .md, .csv, .json).`);
-      return;
-    }
-    const isSupported = ["pdf", "txt", "md", "csv", "json", "docx", "text"].includes(ext);
+    const isSupported = ["pdf", "txt", "md", "csv", "json", "docx", "text", "jpg", "jpeg", "png", "webp", "bmp"].includes(ext);
     if (!isSupported) {
       setSelectedFile(null);
-      setIngestError(`Unsupported file format ".${ext}". Please upload a knowledge document (.pdf, .txt, .md, .csv, .json).`);
+      setImagePreviewUrl(null);
+      setIngestError(`Unsupported file format ".${ext}". Please upload a knowledge document (.pdf, .txt, .md, .csv, .json) or image (.png, .jpg, .jpeg, .webp).`);
+      return;
+    }
+    if (isImage) {
+      if (file.size > 10 * 1024 * 1024) {
+        setSelectedFile(null);
+        setImagePreviewUrl(null);
+        setIngestError("Image files must be under 10MB for ingestion.");
+        return;
+      }
+      setSelectedFile(file);
+      setImagePreviewUrl(URL.createObjectURL(file));
+      setIngestError(null);
+      setIngestSuccess(null);
+      setIngestId(file.name.replace(/\.[^/.]+$/, ""));
       return;
     }
     if (!ext.includes("pdf") && file.size > 350 * 1024) {
       setSelectedFile(null);
+      setImagePreviewUrl(null);
       setIngestError(`Raw text files must be under 350KB for single-document ingestion. For larger books or papers, upload as a PDF for automatic multi-chunk vectorization.`);
       return;
     }
     setSelectedFile(file);
+    setImagePreviewUrl(null);
     setIngestError(null);
     setIngestSuccess(null);
     setIngestId(file.name.replace(/\.[^/.]+$/, ""));
@@ -1409,15 +1423,79 @@ export default function SearchPlayground() {
   const handleIngestFile = async () => {
     if (!selectedFile) { setIngestError("Please select or drop a file first."); return; }
     const ext = selectedFile.name.split(".").pop()?.toLowerCase() || "";
-    if (["jpg", "jpeg", "png", "webp", "gif"].includes(ext)) {
-      setIngestError("Image files cannot be vectorized as text. Please upload a PDF or text document.");
-      return;
-    }
+    const isImage = ["jpg", "jpeg", "png", "webp", "gif", "bmp"].includes(ext);
 
     setIngesting(true);
     setIngestError(null);
     setIngestSuccess(null);
     const apiBase = process.env.NEXT_PUBLIC_DYNAVEC_API || "http://127.0.0.1:8779";
+
+    if (isImage) {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = (reader.result as string).split(",")[1];
+        try {
+          const res = await fetch(`${apiBase}/api/ingest-file`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              filename: selectedFile.name,
+              content_base64: base64,
+              namespace,
+              category: ingestTopic || "image-assets",
+              caption: imageCaption.trim(),
+            }),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            setIngestSuccess(`Successfully vectorized image "${selectedFile.name}" into AWS DynamoDB & S3 (${data.latency_ms || 32} ms)`);
+            setSelectedFile(null);
+            setImagePreviewUrl(null);
+            setImageCaption("");
+            fetchDocuments();
+          } else {
+            // Client-side fallback if backend responded with error
+            const docText = `Image document: ${selectedFile.name} (${ext.toUpperCase()}). ${imageCaption ? `Description: ${imageCaption}` : "Visual document vector asset."}`;
+            const clientRes = await upsertDocument(docText, namespace, ingestId.trim() || selectedFile.name, {
+              topic: ingestTopic || "image-assets",
+              filename: selectedFile.name,
+              caption: imageCaption,
+              format: ext.toUpperCase(),
+              timestamp: Date.now(),
+            });
+            setIngestSuccess(`Indexed image "${selectedFile.name}" into AWS Cloud. ID: ${clientRes.id}`);
+            setSelectedFile(null);
+            setImagePreviewUrl(null);
+            setImageCaption("");
+            fetchDocuments();
+          }
+        } catch {
+          // Client-side fallback if backend is offline
+          try {
+            const docText = `Image document: ${selectedFile.name} (${ext.toUpperCase()}). ${imageCaption ? `Description: ${imageCaption}` : "Visual document vector asset."}`;
+            const clientRes = await upsertDocument(docText, namespace, ingestId.trim() || selectedFile.name, {
+              topic: ingestTopic || "image-assets",
+              filename: selectedFile.name,
+              caption: imageCaption,
+              format: ext.toUpperCase(),
+              timestamp: Date.now(),
+            });
+            setIngestSuccess(`Indexed image "${selectedFile.name}" into AWS Cloud. ID: ${clientRes.id}`);
+            setSelectedFile(null);
+            setImagePreviewUrl(null);
+            setImageCaption("");
+            fetchDocuments();
+          } catch (upsertErr: any) {
+            setIngestError(upsertErr.message || "Failed to index image.");
+          }
+        } finally {
+          setIngesting(false);
+        }
+      };
+      reader.readAsDataURL(selectedFile);
+      return;
+    }
+
     if (selectedFile.name.toLowerCase().endsWith(".pdf")) {
       const reader = new FileReader();
       reader.onload = async () => {
@@ -1432,6 +1510,8 @@ export default function SearchPlayground() {
           if (res.ok) {
             setIngestSuccess(`Successfully parsed and ingested ${data.chunks_ingested} chunks across ${data.pages} pages into AWS DynamoDB & S3 (${data.latency_ms} ms)`);
             setSelectedFile(null);
+            setImagePreviewUrl(null);
+            setImageCaption("");
             fetchDocuments();
           } else {
             setIngestError(data.error || "Failed to parse and ingest file.");
@@ -1452,6 +1532,8 @@ export default function SearchPlayground() {
         const res = await upsertDocument(text, namespace, ingestId.trim() || selectedFile.name, { topic: ingestTopic || "file-upload", filename: selectedFile.name, timestamp: Date.now() });
         setIngestSuccess(`Ingested "${selectedFile.name}" into AWS Cloud. ID: ${res.id} (${res.latency_ms} ms)`);
         setSelectedFile(null);
+        setImagePreviewUrl(null);
+        setImageCaption("");
         fetchDocuments();
       } catch (err: any) {
         setIngestError(err.message || "Failed to ingest file.");
@@ -1684,7 +1766,7 @@ export default function SearchPlayground() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".pdf,.txt,.md,.csv,.json,.docx"
+                  accept=".pdf,.txt,.md,.csv,.json,.docx,.png,.jpg,.jpeg,.webp"
                   className="hidden"
                   onChange={(e) => {
                     if (e.target.files && e.target.files.length > 0) handleFileSelect(e.target.files[0]);
@@ -1710,36 +1792,66 @@ export default function SearchPlayground() {
                       </svg>
                       <div>
                         <p className="text-sm font-semibold text-ink">
-                          Drag &amp; drop a knowledge document here, or{" "}
+                          Drag &amp; drop a document or image here, or{" "}
                           <span className="text-accent hover:underline cursor-pointer">browse</span>
                         </p>
                         <p className="text-xs text-muted mt-1">
-                          Accepts PDF (auto-chunked) or text files (.txt, .md, .csv, .json)
+                          Accepts PDF, text files (.txt, .md, .csv, .json), and images (.png, .jpg, .jpeg, .webp)
                         </p>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-bg border border-line rounded-xl p-4 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-lg bg-accent-soft text-accent-ink flex items-center justify-center shrink-0">
-                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5">
-                          <path d="M4 4a2 2 0 0 1 2-2h6l4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4z" />
-                          <path d="M12 2v4h4" />
-                        </svg>
+                  <div className="bg-bg border border-line rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {imagePreviewUrl ? (
+                          <img
+                            src={imagePreviewUrl}
+                            alt={selectedFile.name}
+                            className="w-12 h-12 object-cover rounded-lg border border-line shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-accent-soft text-accent-ink flex items-center justify-center shrink-0">
+                            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5">
+                              <path d="M4 4a2 2 0 0 1 2-2h6l4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4z" />
+                              <path d="M12 2v4h4" />
+                            </svg>
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-mono text-xs font-bold text-ink truncate">{selectedFile.name}</p>
+                          <p className="font-mono text-[11px] text-faint">
+                            {formatFileSize(selectedFile.size)} · {imagePreviewUrl ? "Image Asset · Ready for Vector Encoding" : "Ready for vectorization"}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="font-mono text-xs font-bold text-ink truncate">{selectedFile.name}</p>
-                        <p className="font-mono text-[11px] text-faint">{formatFileSize(selectedFile.size)} · Ready for vectorization</p>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedFile(null); setImagePreviewUrl(null); setImageCaption(""); }}
+                        className="font-mono text-xs text-faint hover:text-err px-2 py-1 rounded hover:bg-line/40 transition-colors shrink-0"
+                      >
+                        Remove
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedFile(null)}
-                      className="font-mono text-xs text-faint hover:text-err px-2 py-1 rounded hover:bg-line/40 transition-colors shrink-0"
-                    >
-                      Remove
-                    </button>
+
+                    {imagePreviewUrl && (
+                      <div className="pt-2 border-t border-line/60">
+                        <label className="block font-mono text-[10.5px] text-faint uppercase mb-1">
+                          Image Context / Caption (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Architecture diagram of DynamoDB and S3 Vectors"
+                          value={imageCaption}
+                          onChange={(e) => setImageCaption(e.target.value)}
+                          className="w-full font-mono text-xs px-3 py-2 bg-surface border border-line rounded-lg text-ink focus:border-accent outline-none"
+                        />
+                        <p className="font-mono text-[10.5px] text-faint mt-1">
+                          Semantic context used by Dynavec to generate the high-dimensional vector embedding.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
 

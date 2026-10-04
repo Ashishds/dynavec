@@ -1043,6 +1043,42 @@ def _make_handler(
                             return self._send(
                                 400, json.dumps({"error": f"Failed to parse PDF: {e}"})
                             )
+                    elif filename.lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".bmp")):
+                        try:
+                            from PIL import Image
+
+                            img = Image.open(io.BytesIO(raw_bytes))
+                            caption = payload.get("caption", "").strip()
+
+                            desc_parts = [
+                                f"Image Document: {filename}",
+                                f"Format: {img.format or 'Image'}, Resolution: {img.width}x{img.height}, Mode: {img.mode}",
+                            ]
+                            if caption:
+                                desc_parts.append(f"Visual Context / Caption: {caption}")
+                            else:
+                                desc_parts.append("Visual asset indexed for semantic retrieval.")
+
+                            img_text = ". ".join(desc_parts)
+                            records.append(
+                                Record(
+                                    id=filename,
+                                    text=img_text,
+                                    metadata={
+                                        "filename": filename,
+                                        "category": cat or "image-assets",
+                                        "type": "image",
+                                        "format": img.format or "UNKNOWN",
+                                        "width": img.width,
+                                        "height": img.height,
+                                        "caption": caption,
+                                    },
+                                )
+                            )
+                        except Exception as e:
+                            return self._send(
+                                400, json.dumps({"error": f"Failed to process image: {e}"})
+                            )
                     else:
                         txt = raw_bytes.decode("utf-8", errors="replace")
                         records.append(
