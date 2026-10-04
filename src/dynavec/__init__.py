@@ -24,8 +24,14 @@ from .cache import BaseCache, DynamoDBCache, RedisCache, SemanticCache
 from .client import Dynavec
 from .config import DynavecConfig
 from .credentials import AWSCredentials
-from .eval import EvalDataset, EvalQuery, EvalResult, run_eval
-from .eval_judge import BedrockJudge, JudgeScore, LLMJudge, OpenAIJudge
+from .eval_judge import (
+    BedrockJudge,
+    DeterministicJudge,
+    JudgeScore,
+    LLMJudge,
+    OpenAIJudge,
+    evaluate_rag_triad,
+)
 from .exceptions import (
     ConfigurationError,
     DimensionMismatchError,
@@ -40,6 +46,14 @@ from .migration import MigrationReport, PineconeMigrator
 from .models import Document, SearchResult, UpsertResult
 from .namespace import NamespaceView
 from .quantization import ProductQuantizer
+from .rag_synthesizer import (
+    BedrockSynthesizer,
+    Citation,
+    ExtractiveRAGSynthesizer,
+    OpenAISynthesizer,
+    SynthesizedAnswer,
+    get_default_synthesizer,
+)
 from .retrieval import (
     maximal_marginal_relevance,
     reciprocal_rank_fusion,
@@ -88,6 +102,15 @@ __all__ = [
     "JudgeScore",
     "OpenAIJudge",
     "BedrockJudge",
+    "DeterministicJudge",
+    "evaluate_rag_triad",
+    # synthesis
+    "ExtractiveRAGSynthesizer",
+    "OpenAISynthesizer",
+    "BedrockSynthesizer",
+    "get_default_synthesizer",
+    "SynthesizedAnswer",
+    "Citation",
     # migration
     "PineconeMigrator",
     "MigrationReport",

@@ -16,11 +16,11 @@ export default function Kpis({ m }: { m: Metrics }) {
   const num = (n: number, d = 0) => Number(n).toLocaleString(undefined, { maximumFractionDigits: d });
   return (
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5 mb-5">
-      <Kpi label="Queries / min" value={num(m.qpm, 1)} win />
-      <Kpi label="p95 latency" value={num(m.p95, 0)} unit="ms" />
-      <Kpi label="Cache hit rate" value={m.cache_hit_rate == null ? "—" : num(m.cache_hit_rate, 1)} unit={m.cache_hit_rate == null ? "" : "%"} win />
-      <Kpi label="Avg results" value={num(m.avg_results, 1)} />
-      <Kpi label="Error rate" value={num(m.error_rate, 1)} unit="%" />
+      <Kpi label="Query Rate (QPM)" value={num(m.qpm, 1)} win />
+      <Kpi label="p95 Latency" value={num(m.p95, 0)} unit="ms" />
+      <Kpi label="Cache Hit Ratio" value={m.cache_hit_rate == null ? "—" : num(m.cache_hit_rate, 1)} unit={m.cache_hit_rate == null ? "—" : "%"} win />
+      <Kpi label="Avg Retrievable Chunks" value={num(m.avg_results, 1)} />
+      <Kpi label="Pipeline Error Rate" value={num(m.error_rate, 1)} unit="%" />
     </div>
   );
 }

@@ -37,7 +37,7 @@ export default function FaithfulnessPanel() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold font-mono tracking-tight">LLM-as-a-Judge Evaluation (RAG Quality)</h2>
+          <h2 className="text-xl font-bold font-sans tracking-tight">LLM-as-a-Judge Evaluation (RAG Quality)</h2>
           <p className="text-sm text-muted">Automated verification of groundedness, hallucination detection, and response relevance</p>
         </div>
         <div className="flex items-center gap-2">
@@ -62,7 +62,7 @@ export default function FaithfulnessPanel() {
 
       <div className="bg-surface border border-line rounded-xl2 overflow-hidden">
         <div className="p-4 border-b border-line">
-          <h3 className="font-semibold text-sm font-mono">Recent Judge Audit Samples</h3>
+          <h3 className="font-semibold text-sm font-sans text-ink">Recent Judge Audit Samples</h3>
         </div>
         <div className="divide-y divide-line text-xs font-mono">
           {evaluations.map((e, idx) => (
@@ -84,7 +84,7 @@ export default function FaithfulnessPanel() {
       {/* Cheaper Models Comparison Matrix */}
       <div className="bg-surface border border-line rounded-xl2 p-5">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-bold font-mono text-ink">Judge Model Cost &amp; Speed Comparison</h3>
+          <h3 className="text-sm font-bold font-sans text-ink">Judge Model Cost &amp; Speed Comparison</h3>
           <span className="font-mono text-[11px] text-ok font-semibold">Active: Bedrock Claude 3 Haiku</span>
         </div>
         <p className="text-xs text-muted mb-4 font-sans">
@@ -134,7 +134,7 @@ export default function FaithfulnessPanel() {
                 <td className="p-2.5 text-err">$3.00</td>
                 <td className="p-2.5 text-err">$15.00</td>
                 <td className="p-2.5">~ 1,200 ms</td>
-                <td className="p-2.5"><span className="px-2 py-0.5 bg-bg text-muted rounded text-[10px]">PREVIOUS (12× COST)</span></td>
+                <td className="p-2.5"><span className="px-2 py-0.5 bg-bg text-muted rounded text-[10px]">PREVIOUS (12&times; Cost)</span></td>
               </tr>
             </tbody>
           </table>

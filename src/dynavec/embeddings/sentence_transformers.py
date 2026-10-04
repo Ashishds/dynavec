@@ -37,7 +37,11 @@ class SentenceTransformerEmbedder(Embedder):
             ) from exc
 
         self._model = SentenceTransformer(model, device=device)
-        self.dimension = self._model.get_sentence_embedding_dimension()
+        # Use the newer API; fall back to deprecated name for older versions
+        if hasattr(self._model, "get_embedding_dimension"):
+            self.dimension = self._model.get_embedding_dimension()
+        else:
+            self.dimension = self._model.get_sentence_embedding_dimension()  # type: ignore[attr-defined]
         self.normalize = normalize
         self.batch_size = batch_size
 

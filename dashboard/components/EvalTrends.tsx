@@ -1,4 +1,5 @@
 "use client";
+import React, { useState } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -12,9 +13,9 @@ import {
 import type { EvalRun } from "@/lib/types";
 
 const COLORS = {
-  recall: ["#2f7d5b", "#4ade80", "#86efac", "#bbf7d0"],
-  ndcg: ["#e8623b", "#f07a58", "#f9a68a", "#fdd0c0"],
-  mrr: "#3b5bdb",
+  recall: ["#10b981", "#3b82f6", "#8b5cf6", "#f59e0b"],
+  ndcg: ["#06b6d4", "#6366f1", "#ec4899", "#f97316"],
+  mrr: "#10b981",
 };
 
 function formatDate(ts: number): string {
@@ -22,13 +23,16 @@ function formatDate(ts: number): string {
 }
 
 export default function EvalTrends({ runs }: { runs: EvalRun[] }) {
+  const [selectedDataset, setSelectedDataset] = useState<string>("");
+  const [activeChartTab, setActiveChartTab] = useState<"recall" | "ranking">("recall");
+
   if (runs.length === 0) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-6xl">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold font-mono tracking-tight">Retrieval Quality &amp; Ranking Benchmarks</h2>
-            <p className="text-sm text-muted">Offline accuracy evaluation measuring how effectively Dynavec ranks relevant documents</p>
+            <h2 className="text-xl font-bold font-sans tracking-tight text-ink">Retrieval Quality &amp; Accuracy Benchmarks</h2>
+            <p className="text-sm text-muted">Offline accuracy evaluation measuring rank ordering, context precision, and target recall</p>
           </div>
           <span className="font-mono text-xs px-2.5 py-1 bg-accent-soft text-accent-ink rounded-full border border-accent/20">
             Awaiting Benchmark Run
@@ -39,7 +43,7 @@ export default function EvalTrends({ runs }: { runs: EvalRun[] }) {
           <div className="w-12 h-12 rounded-full bg-accent-soft text-accent-ink flex items-center justify-center mx-auto mb-3 font-mono font-bold text-lg">
             Q&amp;A
           </div>
-          <h3 className="text-base font-bold font-mono text-ink mb-1">Continuous Retrieval Quality Tracking</h3>
+          <h3 className="text-base font-bold font-sans text-ink mb-1">Continuous Retrieval Quality Tracking</h3>
           <p className="text-xs text-muted max-w-md mx-auto mb-4">
             Dynavec provides built-in offline evaluation tools (<code className="text-accent font-semibold">dynavec.eval</code>) to measure Recall, Mean Reciprocal Rank (MRR), and nDCG against your enterprise ground-truth datasets.
           </p>
@@ -54,197 +58,324 @@ export default function EvalTrends({ runs }: { runs: EvalRun[] }) {
     );
   }
 
-  const ks = runs[0].ks;
+  const datasets = Array.from(new Set(runs.map((r) => r.dataset)));
+  const defaultDataset = datasets.includes("production-rag-benchmark") ? "production-rag-benchmark" : datasets[0] || "";
+  const activeDataset = (selectedDataset && datasets.includes(selectedDataset)) ? selectedDataset : defaultDataset;
 
-  // Build chart data: one row per run, columns for each metric
-  const recallData = runs.map((r) => {
-    const row: Record<string, number | string> = { date: formatDate(r.timestamp) };
-    for (const k of ks) row[`R@${k}`] = +(r.recall[String(k)] ?? 0).toFixed(4);
+  // Filter runs strictly by the active dataset so deltas and Ks are statistically coherent
+  const displayRuns = runs.filter((r) => r.dataset === activeDataset);
+
+  // Extract Ks that strictly exist in this dataset
+  const ks = Array.from(new Set(displayRuns.flatMap((r) => r.ks || []))).sort((a, b) => a - b);
+
+  // Build chart datasets
+  const chartData = displayRuns.map((r) => {
+    const row: Record<string, number | string> = {
+      date: formatDate(r.timestamp),
+      MRR: +(r.mrr * 100).toFixed(1),
+    };
+    for (const k of ks) {
+      if (r.recall && r.recall[String(k)] != null) {
+        row[`R@${k}`] = +(r.recall[String(k)] * 100).toFixed(1);
+      }
+      if (r.ndcg && r.ndcg[String(k)] != null) {
+        row[`nDCG@${k}`] = +(r.ndcg[String(k)] * 100).toFixed(1);
+      }
+    }
     return row;
   });
 
-  const ndcgData = runs.map((r) => {
-    const row: Record<string, number | string> = { date: formatDate(r.timestamp) };
-    for (const k of ks) row[`nDCG@${k}`] = +(r.ndcg[String(k)] ?? 0).toFixed(4);
-    return row;
-  });
-
-  const mrrData = runs.map((r) => ({
-    date: formatDate(r.timestamp),
-    MRR: +r.mrr.toFixed(4),
-  }));
+  const latest = displayRuns[displayRuns.length - 1];
+  const prev = displayRuns.length > 1 ? displayRuns[displayRuns.length - 2] : null;
 
   const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
-  const gridColor = isDark ? "#2a2a2e" : "#ece6df";
+  const gridColor = isDark ? "#27272a" : "#e4e4e7";
   const tooltipBg = isDark ? "#18181b" : "#ffffff";
-  const tooltipBorder = isDark ? "#2a2a2e" : "#ece6df";
-  const tooltipColor = isDark ? "#f0eeec" : "#14110f";
-  const axisColor = isDark ? "#5c5650" : "#a99f97";
+  const tooltipBorder = isDark ? "#27272a" : "#e4e4e7";
+  const tooltipColor = isDark ? "#f4f4f5" : "#09090b";
+  const axisColor = isDark ? "#71717a" : "#a1a1aa";
 
   const tooltipStyle = {
-    fontFamily: "JetBrains Mono",
+    fontFamily: "JetBrains Mono, monospace",
     fontSize: 12,
     border: `1px solid ${tooltipBorder}`,
     borderRadius: 8,
     background: tooltipBg,
     color: tooltipColor,
+    padding: "8px 12px",
   };
 
+  // KPI calculations for latest run
+  const kpis = [
+    {
+      label: "MRR (Mean Reciprocal Rank)",
+      value: latest?.mrr != null ? (latest.mrr * 100).toFixed(1) : "—",
+      delta: latest?.mrr != null && prev?.mrr != null ? +((latest.mrr - prev.mrr) * 100).toFixed(1) : null,
+      desc: "Rank-1 accuracy of first ground-truth document",
+    },
+    {
+      label: `Top-1 Recall (R@${ks[0] ?? 1})`,
+      value: latest?.recall?.[String(ks[0] ?? 1)] != null ? (latest.recall[String(ks[0] ?? 1)] * 100).toFixed(1) : "—",
+      delta: latest?.recall?.[String(ks[0] ?? 1)] != null && prev?.recall?.[String(ks[0] ?? 1)] != null
+        ? +((latest.recall[String(ks[0] ?? 1)] - prev.recall[String(ks[0] ?? 1)]) * 100).toFixed(1)
+        : null,
+      desc: "Single-shot accuracy at rank #1",
+    },
+    {
+      label: `Top-5 Recall (R@${ks.find((k) => k === 5) ?? ks[1] ?? 5})`,
+      value: (() => {
+        const kTarget = ks.find((k) => k === 5) ?? ks[1] ?? 5;
+        return latest?.recall?.[String(kTarget)] != null ? (latest.recall[String(kTarget)] * 100).toFixed(1) : "—";
+      })(),
+      delta: (() => {
+        const kTarget = ks.find((k) => k === 5) ?? ks[1] ?? 5;
+        if (latest?.recall?.[String(kTarget)] != null && prev?.recall?.[String(kTarget)] != null) {
+          return +((latest.recall[String(kTarget)] - prev.recall[String(kTarget)]) * 100).toFixed(1);
+        }
+        return null;
+      })(),
+      desc: "Relevant context capture within top-5 candidates",
+    },
+    {
+      label: `Top-10 Recall (R@${ks.find((k) => k === 10) ?? ks[ks.length - 1] ?? 10})`,
+      value: (() => {
+        const kTarget = ks.find((k) => k === 10) ?? ks[ks.length - 1] ?? 10;
+        return latest?.recall?.[String(kTarget)] != null ? (latest.recall[String(kTarget)] * 100).toFixed(1) : "—";
+      })(),
+      delta: (() => {
+        const kTarget = ks.find((k) => k === 10) ?? ks[ks.length - 1] ?? 10;
+        if (latest?.recall?.[String(kTarget)] != null && prev?.recall?.[String(kTarget)] != null) {
+          return +((latest.recall[String(kTarget)] - prev.recall[String(kTarget)]) * 100).toFixed(1);
+        }
+        return null;
+      })(),
+      desc: "Cumulative knowledge retrieval coverage",
+    },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-6xl">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold font-mono tracking-tight">Retrieval Quality &amp; Accuracy Benchmarks</h2>
-          <p className="text-sm text-muted">Offline accuracy evaluation measuring rank ordering, context precision, and target recall</p>
+          <h2 className="text-xl font-bold font-sans tracking-tight text-ink">Retrieval Quality &amp; Accuracy Benchmarks</h2>
+          <p className="text-sm text-muted">
+            Continuous offline evaluation measuring rank ordering, context precision, and target recall.
+          </p>
         </div>
-        <span className="font-mono text-xs px-2.5 py-1 bg-ok/10 text-ok rounded-full border border-ok/30 font-semibold">
-          {runs.length} Continuous Evaluation Runs
-        </span>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <span className="font-mono text-xs px-2.5 py-1 bg-ok/10 text-ok rounded-full border border-ok/30 font-semibold flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-ok animate-pulse" /> {displayRuns.length} Benchmark Runs Synced
+          </span>
+        </div>
       </div>
 
-      {/* Metric Explainer Card */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-[11.5px]">
-        <div className="p-3 bg-surface border border-line rounded-xl">
-          <span className="text-accent font-bold block mb-1">MRR (Mean Reciprocal Rank)</span>
-          <p className="text-muted leading-relaxed font-sans text-xs">
-            Evaluates how high the first correct result is ranked. A score above 90% means the single best answer appears at rank #1 in almost every search.
+      {/* Dataset Selector Tabs */}
+      <div className="flex items-center gap-2 border-b border-line pb-3">
+        <span className="text-xs font-mono text-muted mr-1">Benchmark Dataset:</span>
+        {datasets.map((d) => (
+          <button
+            key={d}
+            type="button"
+            onClick={() => setSelectedDataset(d)}
+            className={
+              "px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer " +
+              (activeDataset === d
+                ? "bg-accent text-white shadow-sm"
+                : "bg-surface text-muted hover:text-ink border border-line")
+            }
+          >
+            {d}
+            <span className="ml-1.5 text-[10.5px] opacity-80">
+              ({runs.filter((r) => r.dataset === d).length} runs)
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Metric Explainer Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-xs">
+        <div className="p-3.5 bg-surface border border-line rounded-xl">
+          <span className="text-emerald-400 font-bold block mb-1">MRR (Mean Reciprocal Rank)</span>
+          <p className="text-muted leading-relaxed font-sans text-[11.5px]">
+            Measures position of the first correct chunk. A score above 90% guarantees the best answer appears at rank #1 for almost every query.
           </p>
         </div>
-        <div className="p-3 bg-surface border border-line rounded-xl">
-          <span className="text-ok font-bold block mb-1">Recall@k</span>
-          <p className="text-muted leading-relaxed font-sans text-xs">
-            The fraction of ground-truth relevant documents captured within the top-k retrieved chunks. High recall ensures the LLM receives all context.
+        <div className="p-3.5 bg-surface border border-line rounded-xl">
+          <span className="text-blue-400 font-bold block mb-1">Recall@k</span>
+          <p className="text-muted leading-relaxed font-sans text-[11.5px]">
+            The percentage of ground-truth documents successfully retrieved in top-k chunks. High recall ensures the LLM receives full grounding context.
           </p>
         </div>
-        <div className="p-3 bg-surface border border-line rounded-xl">
-          <span className="text-[#3b5bdb] font-bold block mb-1">nDCG@k</span>
-          <p className="text-muted leading-relaxed font-sans text-xs">
-            Normalized Discounted Cumulative Gain. Rewards algorithms that position highly relevant passages ahead of moderately relevant ones.
+        <div className="p-3.5 bg-surface border border-line rounded-xl">
+          <span className="text-purple-400 font-bold block mb-1">nDCG@k</span>
+          <p className="text-muted leading-relaxed font-sans text-[11.5px]">
+            Normalized Discounted Cumulative Gain. Rewards algorithms that order highly relevant passages above moderately relevant chunks.
           </p>
         </div>
       </div>
-      {/* Summary KPIs for latest run */}
+
+      {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {(() => {
-          const latest = runs[runs.length - 1];
-          const prev = runs.length > 1 ? runs[runs.length - 2] : null;
-          const items = [
-            { label: "MRR", value: latest.mrr, prev: prev?.mrr },
-            { label: `Recall@${ks[0]}`, value: latest.recall[String(ks[0])], prev: prev?.recall[String(ks[0])] },
-            { label: `Recall@${ks[ks.length - 1]}`, value: latest.recall[String(ks[ks.length - 1])], prev: prev?.recall[String(ks[ks.length - 1])] },
-            { label: `nDCG@${ks[ks.length - 1]}`, value: latest.ndcg[String(ks[ks.length - 1])], prev: prev?.ndcg[String(ks[ks.length - 1])] },
-          ];
-          return items.map((it) => {
-            const delta = it.prev != null ? it.value - it.prev : null;
-            return (
-              <div key={it.label} className="bg-surface border border-line rounded-xl2 px-[18px] py-4">
-                <div className="text-[12px] text-muted mb-2">{it.label}</div>
-                <div className="font-mono text-[26px] font-bold tracking-tight">
-                  {(it.value * 100).toFixed(1)}
-                  <span className="text-[13px] text-muted font-normal"> %</span>
-                  {delta != null && (
-                    <span className={`text-[12px] font-normal ml-2 ${delta >= 0 ? "text-ok" : "text-err"}`}>
-                      {delta >= 0 ? "▲" : "▼"} {Math.abs(delta * 100).toFixed(1)}
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          });
-        })()}
+        {kpis.map((kpi) => (
+          <div key={kpi.label} className="bg-surface border border-line rounded-xl2 p-4">
+            <div className="text-[11.5px] text-muted font-mono mb-1">{kpi.label}</div>
+            <div className="font-mono text-2xl font-bold tracking-tight text-ink flex items-baseline gap-1.5">
+              <span>{kpi.value}%</span>
+              {kpi.delta != null && (
+                <span className={`text-xs font-normal font-mono ${kpi.delta >= 0 ? "text-ok" : "text-err"}`}>
+                  {kpi.delta >= 0 ? "▲ +" : "▼ "}
+                  {Math.abs(kpi.delta)}%
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-faint font-sans mt-1 leading-tight">{kpi.desc}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Recall@k line chart */}
-      <div className="bg-surface border border-line rounded-xl2 px-[18px] py-4">
-        <h3 className="m-0 mb-3.5 text-[14px] font-semibold">
-          Recall@k over time{" "}
-          <span className="font-mono text-[11px] text-faint font-normal">{runs.length} runs · {runs[0].dataset}</span>
-        </h3>
-        <div style={{ width: "100%", height: 220 }}>
+      {/* Interactive Trend Chart */}
+      <div className="bg-surface border border-line rounded-xl2 p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div>
+            <h3 className="font-semibold text-sm font-sans text-ink">
+              {activeChartTab === "recall" ? "Recall@k Multi-Cutoff Trends" : "Ranking Quality (MRR & nDCG) Trends"}
+            </h3>
+            <p className="text-xs text-muted">
+              Progression across {displayRuns.length} runs on <span className="font-mono text-accent">{activeDataset}</span>
+            </p>
+          </div>
+          <div className="flex items-center border border-line rounded-lg overflow-hidden self-start sm:self-auto font-mono text-xs">
+            <button
+              type="button"
+              onClick={() => setActiveChartTab("recall")}
+              className={`px-3 py-1 transition-colors cursor-pointer ${
+                activeChartTab === "recall" ? "bg-accent text-white font-medium" : "bg-bg text-muted hover:text-ink"
+              }`}
+            >
+              Recall@k
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveChartTab("ranking")}
+              className={`px-3 py-1 transition-colors cursor-pointer border-l border-line ${
+                activeChartTab === "ranking" ? "bg-accent text-white font-medium" : "bg-bg text-muted hover:text-ink"
+              }`}
+            >
+              MRR &amp; nDCG
+            </button>
+          </div>
+        </div>
+
+        <div style={{ width: "100%", height: 260 }}>
           <ResponsiveContainer>
-            <LineChart data={recallData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: axisColor }} />
-              <YAxis domain={[0, 1]} tick={{ fontSize: 11, fill: axisColor }} tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} />
-              <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => `${(v * 100).toFixed(1)}%`} />
-              <Legend wrapperStyle={{ fontSize: 12, fontFamily: "JetBrains Mono" }} />
-              {ks.map((k, i) => (
-                <Line key={k} type="monotone" dataKey={`R@${k}`} stroke={COLORS.recall[i % COLORS.recall.length]} strokeWidth={2} dot={{ r: 3 }} />
-              ))}
-            </LineChart>
+            {activeChartTab === "recall" ? (
+              <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: axisColor }} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: axisColor }} tickFormatter={(v: number) => `${v}%`} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => `${v}%`} />
+                <Legend wrapperStyle={{ fontSize: 12, fontFamily: "JetBrains Mono" }} />
+                {ks.map((k, i) => (
+                  <Line
+                    key={k}
+                    type="monotone"
+                    dataKey={`R@${k}`}
+                    name={`Recall@${k}`}
+                    stroke={COLORS.recall[i % COLORS.recall.length]}
+                    strokeWidth={2}
+                    dot={{ r: 3.5 }}
+                    activeDot={{ r: 5 }}
+                  />
+                ))}
+              </LineChart>
+            ) : (
+              <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: axisColor }} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: axisColor }} tickFormatter={(v: number) => `${v}%`} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => `${v}%`} />
+                <Legend wrapperStyle={{ fontSize: 12, fontFamily: "JetBrains Mono" }} />
+                <Line
+                  type="monotone"
+                  dataKey="MRR"
+                  name="MRR"
+                  stroke="#10b981"
+                  strokeWidth={2.5}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+                {ks.map((k, i) => (
+                  <Line
+                    key={`ndcg${k}`}
+                    type="monotone"
+                    dataKey={`nDCG@${k}`}
+                    name={`nDCG@${k}`}
+                    stroke={COLORS.ndcg[i % COLORS.ndcg.length]}
+                    strokeWidth={1.75}
+                    strokeDasharray="4 4"
+                    dot={{ r: 3 }}
+                  />
+                ))}
+              </LineChart>
+            )}
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* nDCG@k line chart */}
-      <div className="bg-surface border border-line rounded-xl2 px-[18px] py-4">
-        <h3 className="m-0 mb-3.5 text-[14px] font-semibold">
-          nDCG@k over time{" "}
-          <span className="font-mono text-[11px] text-faint font-normal">normalized discounted cumulative gain</span>
-        </h3>
-        <div style={{ width: "100%", height: 220 }}>
-          <ResponsiveContainer>
-            <LineChart data={ndcgData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: axisColor }} />
-              <YAxis domain={[0, 1]} tick={{ fontSize: 11, fill: axisColor }} tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} />
-              <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => `${(v * 100).toFixed(1)}%`} />
-              <Legend wrapperStyle={{ fontSize: 12, fontFamily: "JetBrains Mono" }} />
-              {ks.map((k, i) => (
-                <Line key={k} type="monotone" dataKey={`nDCG@${k}`} stroke={COLORS.ndcg[i % COLORS.ndcg.length]} strokeWidth={2} dot={{ r: 3 }} />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* MRR line chart */}
-      <div className="bg-surface border border-line rounded-xl2 px-[18px] py-4">
-        <h3 className="m-0 mb-3.5 text-[14px] font-semibold">
-          MRR over time{" "}
-          <span className="font-mono text-[11px] text-faint font-normal">mean reciprocal rank</span>
-        </h3>
-        <div style={{ width: "100%", height: 180 }}>
-          <ResponsiveContainer>
-            <LineChart data={mrrData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: axisColor }} />
-              <YAxis domain={[0, 1]} tick={{ fontSize: 11, fill: axisColor }} tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} />
-              <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => `${(v * 100).toFixed(1)}%`} />
-              <Line type="monotone" dataKey="MRR" stroke={COLORS.mrr} strokeWidth={2.5} dot={{ r: 3.5, fill: COLORS.mrr }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Run details table */}
-      <div className="bg-surface border border-line rounded-xl2 overflow-hidden">
-        <div className="px-[18px] py-3.5 border-b border-line">
-          <h3 className="m-0 text-[14px] font-semibold">Run history</h3>
+      {/* Run Details Table */}
+      <div className="bg-surface border border-line rounded-xl2 overflow-hidden shadow-sm">
+        <div className="px-5 py-3.5 border-b border-line flex items-center justify-between">
+          <h3 className="m-0 text-sm font-semibold font-sans text-ink">
+            Benchmark Execution History ({activeDataset})
+          </h3>
+          <span className="text-xs text-muted font-mono">{displayRuns.length} Total Runs</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[13px]">
+          <table className="w-full border-collapse text-xs font-mono">
             <thead>
-              <tr className="text-left font-mono text-[11px] uppercase tracking-wide text-muted bg-table-head">
-                {["Date", "Dataset", "Queries", "MRR", ...ks.map((k) => `R@${k}`), ...ks.map((k) => `nDCG@${k}`)].map((h) => (
-                  <th key={h} className="px-[18px] py-2.5 border-b border-line font-normal">{h}</th>
+              <tr className="text-left uppercase tracking-wider text-muted bg-table-head border-b border-line">
+                <th className="px-4 py-3 font-medium">Date</th>
+                <th className="px-4 py-3 font-medium">Dataset</th>
+                <th className="px-4 py-3 font-medium text-right">Queries</th>
+                <th className="px-4 py-3 font-medium text-right text-emerald-400">MRR</th>
+                {ks.map((k) => (
+                  <th key={`hdr-r${k}`} className="px-4 py-3 font-medium text-right">
+                    R@{k}
+                  </th>
+                ))}
+                {ks.map((k) => (
+                  <th key={`hdr-n${k}`} className="px-4 py-3 font-medium text-right">
+                    nDCG@{k}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {[...runs].reverse().map((r, i) => (
-                <tr key={i} className="[&>td]:px-[18px] [&>td]:py-2.5 [&>td]:border-b [&>td]:border-line tabular-nums">
-                  <td className="font-mono">{formatDate(r.timestamp)}</td>
-                  <td>{r.dataset}</td>
-                  <td className="font-mono">{r.n_queries}</td>
-                  <td className="font-mono">{(r.mrr * 100).toFixed(1)}%</td>
-                  {ks.map((k) => (
-                    <td key={`r${k}`} className="font-mono">{((r.recall[String(k)] ?? 0) * 100).toFixed(1)}%</td>
-                  ))}
-                  {ks.map((k) => (
-                    <td key={`n${k}`} className="font-mono">{((r.ndcg[String(k)] ?? 0) * 100).toFixed(1)}%</td>
-                  ))}
+              {[...displayRuns].reverse().map((r, i) => (
+                <tr key={i} className="border-b border-line/60 hover:bg-line/20 transition-colors">
+                  <td className="px-4 py-3 text-ink font-semibold">{formatDate(r.timestamp)}</td>
+                  <td className="px-4 py-3 text-muted">{r.dataset}</td>
+                  <td className="px-4 py-3 text-right text-muted">{r.n_queries}</td>
+                  <td className="px-4 py-3 text-right font-bold text-ok">
+                    {!isNaN(Number(r.mrr)) ? (r.mrr * 100).toFixed(1) + "%" : "—"}
+                  </td>
+                  {ks.map((k) => {
+                    const val = Number(r.recall?.[String(k)]);
+                    return (
+                      <td key={`r${k}`} className="px-4 py-3 text-right text-ink">
+                        {!isNaN(val) && val !== 0 ? (val * 100).toFixed(1) + "%" : "—"}
+                      </td>
+                    );
+                  })}
+                  {ks.map((k) => {
+                    const val = Number(r.ndcg?.[String(k)]);
+                    return (
+                      <td key={`n${k}`} className="px-4 py-3 text-right text-muted">
+                        {!isNaN(val) && val !== 0 ? (val * 100).toFixed(1) + "%" : "—"}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>

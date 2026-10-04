@@ -1,9 +1,59 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import 'reactflow/dist/style.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ── Light theme (default) ─────────────────────────────────────── */
+/* ── ReactFlow Theme Overrides ── */
+.react-flow__attribution { display: none !important; }
+.react-flow__handle {
+  width: 10px !important;
+  height: 10px !important;
+  background: var(--color-accent) !important;
+  border: 2px solid var(--color-surface) !important;
+  border-radius: 50% !important;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.react-flow__handle:hover {
+  transform: scale(1.35);
+  background: #ff7f59 !important;
+}
+.react-flow__edge-path {
+  stroke: var(--color-muted) !important;
+  stroke-width: 2 !important;
+}
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--color-accent) !important;
+  stroke-width: 2.5 !important;
+}
+.react-flow__edge.animated .react-flow__edge-path {
+  stroke: var(--color-accent) !important;
+}
+.react-flow__controls {
+  border-radius: 8px !important;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid var(--color-line) !important;
+  background: var(--color-surface) !important;
+}
+.react-flow__controls-button {
+  background: var(--color-surface) !important;
+  border-bottom: 1px solid var(--color-line) !important;
+  color: var(--color-ink) !important;
+  fill: var(--color-ink) !important;
+}
+.react-flow__controls-button:hover {
+  background: var(--color-accent-soft) !important;
+}
+.react-flow__minimap {
+  background: var(--color-surface) !important;
+  border: 1px solid var(--color-line) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+
+/* ── Light theme (default :root — Tailwind dark: class strategy) ── */
 :root {
   color-scheme: light;
   --color-bg: #fbfaf8;
@@ -19,24 +69,28 @@
   --color-err: #b8472a;
   --color-table-head: #faf6f1;
   --color-chart-track: #f0ece6;
+  --nav-blur-bg: rgba(255, 255, 255, 0.82);
+  --nav-blur-border: rgba(232, 98, 59, 0.08);
 }
 
-/* ── Dark theme ────────────────────────────────────────────────── */
+/* ── Dark theme — matches landing page (dynavec.io) ─────────────── */
 html.dark {
   color-scheme: dark;
   --color-bg: #0f0f11;
-  --color-surface: #18181b;
+  --color-surface: #16181b;
   --color-ink: #f0eeec;
   --color-muted: #9c9590;
   --color-faint: #5c5650;
   --color-line: #2a2a2e;
-  --color-accent: #f07a58;
+  --color-accent: #e8623b;
   --color-accent-ink: #f9a68a;
-  --color-accent-soft: rgba(240, 122, 88, 0.12);
+  --color-accent-soft: rgba(232, 98, 59, 0.12);
   --color-ok: #4ade80;
   --color-err: #f87171;
   --color-table-head: #1e1e22;
   --color-chart-track: #27272a;
+  --nav-blur-bg: rgba(13, 13, 17, 0.82);
+  --nav-blur-border: rgba(232, 98, 59, 0.10);
 }
 
 html, body { padding: 0; margin: 0; }

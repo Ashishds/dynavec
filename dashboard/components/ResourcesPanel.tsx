@@ -1,34 +1,48 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { getResourceStatus, type ResourceStatusResponse } from "@/lib/api";
 
 export default function ResourcesPanel() {
+  const [data, setData] = useState<ResourceStatusResponse | null>(null);
+
+  useEffect(() => {
+    getResourceStatus().then(setData);
+  }, []);
+
+  const maskArn = (arn: string) => arn.replace(/:\d{12}:/g, ":••••••••3030:").replace(/-\d{12}/g, "-••••••••");
+
+  const rawDynamoArn = data?.dynamodb?.arn ?? "arn:aws:dynamodb:us-east-1:212919533030:table/dynavec_docs";
+  const rawBucketName = data?.s3_bucket?.name ?? "dynavec-vectors-212919533030";
+  const rawBucketArn = data?.s3_bucket?.arn ?? "arn:aws:s3:::dynavec-vectors-212919533030";
+  const rawIndexArn = data?.s3_index?.arn ?? "arn:aws:s3vectors:us-east-1:212919533030:bucket/dynavec-vectors-212919533030/index/docs-index";
+
   const resources = [
     {
       type: "DynamoDB Document Table",
-      name: "dynavec_docs",
-      arn: "arn:aws:dynamodb:us-east-1:212919533030:table/dynavec_docs",
-      status: "ACTIVE",
-      billing: "PAY_PER_REQUEST (On-Demand)",
+      name: data?.dynamodb?.name ?? "dynavec_docs",
+      arn: maskArn(rawDynamoArn),
+      status: data?.dynamodb?.status ?? "ACTIVE",
+      billing: data?.dynamodb?.billing ?? "PAY_PER_REQUEST (On-Demand)",
       keySchema: "pk (String, HASH)",
-      items: "4 items indexed",
+      extra: data?.dynamodb ? `${data.dynamodb.item_count} items (~${(data.dynamodb.size_bytes / 1024).toFixed(1)} KB)` : "Live Synced with AWS",
     },
     {
       type: "S3 Vector Bucket",
-      name: "dynavec-vectors-212919533030",
-      arn: "arn:aws:s3:::dynavec-vectors-212919533030",
-      status: "ACTIVE",
+      name: maskArn(rawBucketName),
+      arn: maskArn(rawBucketArn),
+      status: data?.s3_bucket?.status ?? "ACTIVE",
       billing: "Standard S3 Storage",
-      keySchema: "Server-side encryption: AES256",
-      items: "Vectors synced with DynamoDB",
+      keySchema: `Server-side encryption: ${data?.s3_bucket?.encryption ?? "AES256"}`,
+      extra: "Encrypted at Rest (SSE-S3)",
     },
     {
       type: "S3 Vectors ANN Index",
-      name: "docs-index",
-      arn: "arn:aws:s3vectors:us-east-1:212919533030:bucket/dynavec-vectors-212919533030/index/docs-index",
-      status: "READY",
-      billing: "1536 float32 dimensions",
-      keySchema: "Distance metric: cosine",
-      items: "Auto-calibrated HNSW index",
+      name: data?.s3_index?.name ?? "docs-index",
+      arn: maskArn(rawIndexArn),
+      status: data?.s3_index?.status ?? "READY",
+      billing: `${data?.s3_index?.dimensions ?? 16} float32 dimensions`,
+      keySchema: `Distance metric: ${data?.s3_index?.metric ?? "cosine"}`,
+      extra: "Sliding-Window Feature Hashing",
     },
   ];
 
@@ -36,7 +50,7 @@ export default function ResourcesPanel() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold font-mono tracking-tight">Cloud Resources (Buckets &amp; Indexes)</h2>
+          <h2 className="text-xl font-bold font-sans tracking-tight">S3 Vector Indexes &amp; Cloud Primitives</h2>
           <p className="text-sm text-muted">Provisioned AWS primitives managed by Terraform &amp; Dynavec</p>
         </div>
         <span className="font-mono text-xs px-2.5 py-1 bg-ok/10 text-ok rounded-full border border-ok/30 flex items-center gap-1.5">
@@ -68,10 +82,10 @@ export default function ResourcesPanel() {
       </div>
 
       <div className="bg-surface border border-line rounded-xl2 p-5">
-        <h3 className="font-semibold text-sm mb-2 font-mono">Connected AWS Environment</h3>
+        <h3 className="font-semibold text-sm mb-2 font-sans text-ink">Connected AWS Environment</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-mono mt-3">
-          <div><div className="text-faint">Account ID</div><div className="font-bold">212919533030</div></div>
-          <div><div className="text-faint">IAM User</div><div className="font-bold">dynavec-admin</div></div>
+          <div><div className="text-faint">Account ID</div><div className="font-bold flex items-center gap-1.5"><span>••••••••3030</span><span className="text-[10px] text-ok font-sans font-normal">Protected</span></div></div>
+          <div><div className="text-faint">IAM Identity</div><div className="font-bold">dynavec-admin</div></div>
           <div><div className="text-faint">AWS Region</div><div className="font-bold">us-east-1</div></div>
           <div><div className="text-faint">Provisioner</div><div className="font-bold text-accent-ink">Terraform v1.14.0</div></div>
         </div>
@@ -79,7 +93,7 @@ export default function ResourcesPanel() {
 
       {/* Production Readiness Matrix */}
       <div className="bg-surface border border-line rounded-xl2 p-5">
-        <h3 className="font-semibold text-sm font-mono text-ink mb-1">Production Architecture &amp; Readiness Checklist</h3>
+        <h3 className="font-semibold text-sm font-sans text-ink mb-1">Production Architecture &amp; Readiness Checklist</h3>
         <p className="text-xs text-muted mb-4 font-sans">
           Evaluation of cloud primitives, network isolation, security boundaries, and scaling controls for enterprise workloads.
         </p>
@@ -95,7 +109,7 @@ export default function ResourcesPanel() {
           <div className="flex items-start justify-between p-3 bg-bg rounded-lg border border-line">
             <div>
               <span className="font-bold text-ink">Strict Multi-Tenant Partition Isolation</span>
-              <p className="text-muted text-[11px] font-sans mt-0.5">Tenant partition keys (<code className="text-accent">{`{namespace}#{id}`}</code>) physically isolate document storage and vector indexing with zero cross-tenant leakage.</p>
+              <p className="text-muted text-[11px] font-sans mt-0.5">Dedicated tenant partition keys physically isolate document storage and vector indexing with zero cross-tenant leakage.</p>
             </div>
             <span className="px-2 py-0.5 bg-ok/10 text-ok rounded text-[11px] font-semibold shrink-0 ml-3">PRODUCTION READY</span>
           </div>

@@ -222,7 +222,9 @@ class PineconeMigrator:
                     yield chunk, None
                 return
             else:
-                raise AttributeError("Pinecone index has neither 'list_paginated' nor 'list' method.")
+                raise AttributeError(
+                    "Pinecone index has neither 'list_paginated' nor 'list' method."
+                )
 
             if not page_ids:
                 break
@@ -243,21 +245,29 @@ class PineconeMigrator:
             kwargs["namespace"] = namespace
 
         resp = self._index.fetch(**kwargs)
-        vectors_map = resp.get("vectors", {}) if isinstance(resp, dict) else getattr(resp, "vectors", {})
+        vectors_map = (
+            resp.get("vectors", {}) if isinstance(resp, dict) else getattr(resp, "vectors", {})
+        )
 
         records: list[dict[str, Any]] = []
         for vid in ids:
-            rec = vectors_map.get(vid) if isinstance(vectors_map, dict) else getattr(vectors_map, vid, None)
+            rec = (
+                vectors_map.get(vid)
+                if isinstance(vectors_map, dict)
+                else getattr(vectors_map, vid, None)
+            )
             if rec is None:
                 continue
             if isinstance(rec, dict):
                 records.append(rec)
             else:
-                records.append({
-                    "id": getattr(rec, "id", vid),
-                    "values": list(getattr(rec, "values", [])),
-                    "metadata": dict(getattr(rec, "metadata", {}) or {}),
-                })
+                records.append(
+                    {
+                        "id": getattr(rec, "id", vid),
+                        "values": list(getattr(rec, "values", [])),
+                        "metadata": dict(getattr(rec, "metadata", {}) or {}),
+                    }
+                )
         return records
 
     def migrate(

@@ -40,11 +40,11 @@ class TestScoreParsing:
 
     def test_score_clamping(self):
         # Above 1.0
-        score, _ = _parse_score('{"score": 1.5, "reason": "Over"}' )
+        score, _ = _parse_score('{"score": 1.5, "reason": "Over"}')
         assert score == 1.0
 
         # Below 0.0
-        score, _ = _parse_score('{"score": -0.2, "reason": "Under"}' )
+        score, _ = _parse_score('{"score": -0.2, "reason": "Under"}')
         assert score == 0.0
 
     def test_invalid_json(self):
@@ -145,9 +145,7 @@ class TestBedrockJudge:
         mock_client = MagicMock()
         mock_boto3.client.return_value = mock_client
 
-        response_body = {
-            "content": [{"text": '{"score": 0.92, "reason": "Directly mentioned"}'}]
-        }
+        response_body = {"content": [{"text": '{"score": 0.92, "reason": "Directly mentioned"}'}]}
         mock_client.invoke_model.return_value = {
             "body": io.BytesIO(json.dumps(response_body).encode("utf-8"))
         }
@@ -171,9 +169,7 @@ class TestBedrockJudge:
         mock_client = MagicMock()
         mock_boto3.client.return_value = mock_client
 
-        response_body = {
-            "content": [{"text": '{"score": 0.88, "reason": "Relevant answer"}'}]
-        }
+        response_body = {"content": [{"text": '{"score": 0.88, "reason": "Relevant answer"}'}]}
         mock_client.invoke_model.return_value = {
             "body": io.BytesIO(json.dumps(response_body).encode("utf-8"))
         }
@@ -192,3 +188,58 @@ class TestBedrockJudge:
             assert res.dimension == "answer_relevance"
             assert res.score == 0.88
             assert res.reason == "Relevant answer"
+
+    def test_context_relevance(self):
+        mock_boto3 = MagicMock()
+        mock_client = MagicMock()
+        mock_boto3.client.return_value = mock_client
+
+        response_body = {"content": [{"text": '{"score": 0.94, "reason": "High signal context"}'}]}
+        mock_client.invoke_model.return_value = {
+            "body": io.BytesIO(json.dumps(response_body).encode("utf-8"))
+        }
+
+        with patch("boto3.client", mock_boto3.client):
+            judge = BedrockJudge(model_id="anthropic.claude-3-haiku-20240307-v1:0")
+            res = judge.context_relevance(
+                question="What is Titan?",
+                context="Amazon Titan text embeddings v2 has 1024 dimensions.",
+            )
+
+            assert isinstance(res, JudgeScore)
+            assert res.dimension == "context_relevance"
+            assert res.score == 0.94
+            assert res.reason == "High signal context"
+
+
+class TestDeterministicJudge:
+    def test_scores_without_external_dependencies(self):
+        from dynavec.eval_judge import DeterministicJudge, evaluate_rag_triad
+
+        judge = DeterministicJudge()
+        f_score = judge.faithfulness(
+            "what is transformer?",
+            "A transformer uses self-attention.",
+            "Transformers rely entirely on an attention mechanism.",
+        )
+        a_score = judge.answer_relevance(
+            "what is transformer?", "A transformer is a deep learning model."
+        )
+        c_score = judge.context_relevance(
+            "what is transformer?", "The transformer model architecture was introduced in 2017."
+        )
+
+        assert 0.0 <= f_score.score <= 1.0
+        assert 0.0 <= a_score.score <= 1.0
+        assert 0.0 <= c_score.score <= 1.0
+
+        triad = evaluate_rag_triad(
+            "what is transformer?",
+            "A transformer uses attention.",
+            "Attention is all you need.",
+            judge=judge,
+        )
+        assert "faithfulness" in triad
+        assert "answer_relevance" in triad
+        assert "context_relevance" in triad
+        assert triad["verdict"] in ("PASS", "WARNING", "FAIL")

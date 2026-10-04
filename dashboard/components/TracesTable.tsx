@@ -18,45 +18,45 @@ export default function TracesTable({
   return (
     <div className="bg-surface border border-line rounded-xl2 overflow-hidden">
       <div className="flex items-center gap-3 px-[18px] py-3.5 border-b border-line">
-        <h3 className="m-0 text-[14px] font-semibold">Traces</h3>
-        <div className="ml-auto flex gap-2">
+        <h3 className="m-0 text-[14px] font-semibold font-sans">Execution Spans &amp; Traces</h3>
+        <div className="ml-auto flex flex-wrap gap-2">
           <select
             value={filters.op || ""}
             onChange={(e) => onFilter({ ...filters, op: e.target.value })}
-            className="font-mono text-[12px] border border-line rounded-md px-2.5 py-1.5 bg-bg text-ink"
+            className="font-mono text-[12px] border border-line rounded-md px-2.5 py-1.5 bg-bg text-ink cursor-pointer"
           >
-            <option value="">all ops</option>
-            <option value="search">search</option>
-            <option value="graph_search">graph_search</option>
-            <option value="upsert">upsert</option>
+            <option value="">All Operations</option>
+            <option value="search">search (Vector ANN)</option>
+            <option value="graph_search">graph_search (Hybrid)</option>
+            <option value="upsert">upsert (Batch Ingest)</option>
           </select>
           <select
             value={filters.status || ""}
             onChange={(e) => onFilter({ ...filters, status: e.target.value })}
-            className="font-mono text-[12px] border border-line rounded-md px-2.5 py-1.5 bg-bg text-ink"
+            className="font-mono text-[12px] border border-line rounded-md px-2.5 py-1.5 bg-bg text-ink cursor-pointer"
           >
-            <option value="">any status</option>
-            <option value="ok">ok</option>
-            <option value="error">error</option>
+            <option value="">All Statuses</option>
+            <option value="ok">Success (ok)</option>
+            <option value="error">Error (error)</option>
           </select>
           <input
-            placeholder="namespace…"
+            placeholder="Filter namespace..."
             value={filters.namespace || ""}
             onChange={(e) => onFilter({ ...filters, namespace: e.target.value })}
-            className="font-mono text-[12px] border border-line rounded-md px-2.5 py-1.5 bg-bg text-ink w-28"
+            className="font-mono text-[12px] border border-line rounded-md px-2.5 py-1.5 bg-bg text-ink w-32 placeholder:text-faint"
           />
         </div>
       </div>
 
       {traces.length === 0 ? (
-        <div className="p-10 text-center text-muted">No traces match.</div>
+        <div className="p-10 text-center text-muted font-mono text-xs">No execution traces matching current filter criteria.</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[13px]">
             <thead>
-              <tr className="text-left font-mono text-[11px] uppercase tracking-wide text-muted bg-table-head">
-                {["Start", "Op", "Namespace", "Latency", "Results", "Cache", "Rank", "Status"].map((h) => (
-                  <th key={h} className="px-[18px] py-2.5 border-b border-line font-normal">{h}</th>
+              <tr className="text-left font-mono text-[11px] uppercase tracking-wider text-muted bg-table-head">
+                {["Timestamp", "Operation", "Namespace", "Latency", "Results", "Cache", "Reranker", "Status"].map((h) => (
+                  <th key={h} className="px-[18px] py-2.5 border-b border-line font-medium">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -65,22 +65,33 @@ export default function TracesTable({
                 <tr
                   key={e.id}
                   onClick={() => onSelect(e.id)}
-                  className="cursor-pointer hover:bg-accent-soft [&>td]:px-[18px] [&>td]:py-2.5 [&>td]:border-b [&>td]:border-line tabular-nums"
+                  className="cursor-pointer hover:bg-accent-soft/40 [&>td]:px-[18px] [&>td]:py-2.5 [&>td]:border-b [&>td]:border-line tabular-nums transition-colors"
                 >
-                  <td className="font-mono">{new Date(e.ts * 1000).toLocaleTimeString()}</td>
+                  <td className="font-mono text-xs text-muted">{new Date(e.ts * 1000).toLocaleTimeString()}</td>
                   <td>
-                    <span className={"font-mono text-[11px] px-2 py-0.5 rounded-full border " + (OP_CLASS[e.op] || "border-line")}>
+                    <span className={"font-mono text-[11px] px-2 py-0.5 rounded-md border font-medium " + (OP_CLASS[e.op] || "border-line")}>
                       {e.op}
                     </span>
                   </td>
-                  <td>{e.namespace}</td>
-                  <td className="font-mono">{e.latency_ms.toFixed(1)} ms</td>
-                  <td className="font-mono">{e.n_results}</td>
+                  <td className="font-mono text-xs font-medium text-ink">{e.namespace}</td>
+                  <td className="font-mono font-medium">{e.latency_ms.toFixed(1)} ms</td>
+                  <td className="font-mono text-muted">{e.n_results}</td>
                   <td>
-                    {e.cache_hit == null ? <span className="text-faint">—</span> : e.cache_hit ? <span className="text-ok">hit</span> : <span className="text-muted">miss</span>}
+                    {e.cache_hit == null ? (
+                      <span className="text-faint font-mono text-xs">—</span>
+                    ) : e.cache_hit ? (
+                      <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-ok/10 text-ok font-semibold">HIT</span>
+                    ) : (
+                      <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-line/60 text-muted">MISS</span>
+                    )}
                   </td>
-                  <td className="font-mono">{[e.rescore, e.rerank].filter(Boolean).join("+") || <span className="text-faint">—</span>}</td>
-                  <td className={e.status === "error" ? "text-err font-semibold" : "text-ok"}>{e.status}</td>
+                  <td className="font-mono text-xs text-muted">{[e.rescore, e.rerank].filter(Boolean).join("+") || <span className="text-faint">—</span>}</td>
+                  <td>
+                    <span className={`font-mono text-[10.5px] px-2 py-0.5 rounded font-semibold inline-flex items-center gap-1 ${e.status === "error" ? "bg-red-500/10 text-red-500" : "bg-ok/10 text-ok"}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${e.status === "error" ? "bg-red-500" : "bg-ok"}`} />
+                      {e.status === "error" ? "ERROR" : "SUCCESS"}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>

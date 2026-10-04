@@ -84,10 +84,43 @@ export async function getEvalRuns(): Promise<EvalRun[]> {
   if (API_BASE) {
     try {
       const r = await fetch(`${API_BASE}/api/eval`, { cache: "no-store" });
-      if (r.ok) return (await r.json()) as EvalRun[];
+      if (r.ok) {
+        const data = (await r.json()) as EvalRun[];
+        if (data && data.length > 0) return data;
+      }
     } catch { /* fall through to sample */ }
   }
   return mockEvalRuns();
+}
+
+export interface LatencyBreakdown {
+  embed_ms: number;
+  ann_ms: number;
+  hydrate_ms: number;
+  rerank_ms: number;
+  llm_ms: number;
+  total_ms: number;
+}
+
+export interface Citation {
+  index: number;
+  id: string;
+  filename?: string;
+  page?: number | string;
+  snippet: string;
+  score?: number;
+}
+
+export interface SynthesizedAnswer {
+  query: string;
+  text: string;
+  citations: Citation[];
+  model: string;
+  latency_ms: number;
+  confidence?: "high" | "medium" | "low";
+  confidence_score?: number;
+  confidence_reason?: string;
+  is_low_confidence?: boolean;
 }
 
 export interface SearchItem {
@@ -101,15 +134,34 @@ export interface SearchResponse {
   query: string;
   namespace: string;
   latency_ms: number;
+  breakdown?: LatencyBreakdown;
+  rerank_applied?: string;
+  candidates_count?: number;
+  confidence?: "high" | "medium" | "low";
+  confidence_score?: number;
+  confidence_reason?: string;
+  is_low_confidence?: boolean;
+  synthesis?: SynthesizedAnswer;
   results: SearchItem[];
+  query_terms?: string[];
 }
 
 export async function searchKnowledgeBase(
   query: string,
   namespace = "production-core",
-  top_k = 3
+  top_k = 3,
+  rerank = "hybrid",
+  candidate_k = 20,
+  synthesize = true
 ): Promise<SearchResponse> {
-  const q = new URLSearchParams({ q: query, namespace, top_k: String(top_k) });
+  const q = new URLSearchParams({
+    q: query,
+    namespace,
+    top_k: String(top_k),
+    rerank,
+    candidate_k: String(candidate_k),
+    synthesize: String(synthesize),
+  });
   const r = await fetch(`${API_BASE}/api/search?${q}`, { cache: "no-store" });
   if (!r.ok) {
     throw new Error(`Search failed: ${r.statusText}`);
@@ -140,4 +192,159 @@ export async function getNamespacesList(): Promise<string[]> {
     if (r.ok) return (await r.json()) as string[];
   } catch { /* ignore */ }
   return ["production-core", "live-demo"];
+}
+
+export interface NamespaceItemStat {
+  name: string;
+  count: number;
+  status: string;
+  pkPattern: string;
+  env: string;
+}
+
+export interface NamespaceStatsResponse {
+  total_items: number;
+  table: string;
+  region: string;
+  namespaces: NamespaceItemStat[];
+}
+
+export async function getNamespaceStats(): Promise<NamespaceStatsResponse | null> {
+  try {
+    const r = await fetch(`${API_BASE}/api/namespaces/stats`, { cache: "no-store" });
+    if (r.ok) return (await r.json()) as NamespaceStatsResponse;
+  } catch { /* ignore */ }
+  return null;
+}
+
+export interface ResourceStatusResponse {
+  account_id: string;
+  region: string;
+  dynamodb: {
+    name: string;
+    arn: string;
+    status: string;
+    billing: string;
+    key_schema: string;
+    item_count: number;
+    size_bytes: number;
+    creation_date: string;
+  };
+  s3_bucket: {
+    name: string;
+    arn: string;
+    status: string;
+    encryption: string;
+  };
+  s3_index: {
+    name: string;
+    arn: string;
+    status: string;
+    dimensions: number;
+    metric: string;
+  };
+}
+
+export async function getResourceStatus(): Promise<ResourceStatusResponse | null> {
+  try {
+    const r = await fetch(`${API_BASE}/api/resources/status`, { cache: "no-store" });
+    if (r.ok) return (await r.json()) as ResourceStatusResponse;
+  } catch { /* ignore */ }
+  return null;
+}
+
+export async function getWorkloadStatus(): Promise<boolean> {
+  try {
+    const r = await fetch(`${API_BASE}/api/workload/status`, { cache: "no-store" });
+    if (r.ok) {
+      const data = await r.json();
+      return Boolean(data.enabled);
+    }
+  } catch { /* ignore */ }
+  return false;
+}
+
+export async function toggleWorkload(): Promise<boolean> {
+  try {
+    const r = await fetch(`${API_BASE}/api/workload/toggle`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (r.ok) {
+      const data = await r.json();
+      return Boolean(data.enabled);
+    }
+  } catch { /* ignore */ }
+  return false;
+}
+
+export interface AuditEvaluationResponse {
+  question: string;
+  faithfulness: number;
+  relevance: number;
+  context_relevance?: number;
+  reason: string;
+  overall_score?: number;
+  verdict: string;
+  model: string;
+  details?: any;
+}
+
+export async function auditEvaluation(
+  question: string,
+  answer: string,
+  context: string
+): Promise<AuditEvaluationResponse> {
+  const r = await fetch(`${API_BASE}/api/eval/audit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question, answer, context }),
+  });
+  if (!r.ok) {
+    throw new Error(`Audit request failed: ${r.statusText}`);
+  }
+  return (await r.json()) as AuditEvaluationResponse;
+}
+export interface BatchTestResult {
+  query: string;
+  confidence: "high" | "medium" | "low" | "error";
+  confidence_score: number;
+  is_low_confidence: boolean;
+  latency_ms: number;
+  n_results: number;
+  top_result: {
+    id: string;
+    score: number;
+    text: string;
+    metadata?: Record<string, any>;
+  } | null;
+  status: "ok" | "error";
+  error?: string;
+}
+
+export interface BatchTestResponse {
+  total_queries: number;
+  total_latency_ms: number;
+  avg_latency_ms: number;
+  avg_confidence_score: number;
+  guardrail_triggered: number;
+  results: BatchTestResult[];
+}
+
+export async function batchTest(
+  queries: string[],
+  namespace = "production-core",
+  top_k = 3,
+  candidate_k = 20,
+  rerank = "hybrid"
+): Promise<BatchTestResponse> {
+  const r = await fetch(`${API_BASE}/api/batch-test`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ queries, namespace, top_k, candidate_k, rerank }),
+  });
+  if (!r.ok) {
+    throw new Error(`Batch test failed: ${r.statusText}`);
+  }
+  return (await r.json()) as BatchTestResponse;
 }

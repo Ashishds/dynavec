@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>In-memory hot tier · dynavec docs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../styles.css" />
+  <link rel="stylesheet" href="docs.css" />
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav__inner">
+      <a class="brand" href="../index.html">
+        <svg class="brand__mark" width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+          <rect x="1" y="1" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="1" y1="11" x2="21" y2="11" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="11" y1="1" x2="11" y2="21" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="2" fill="currentColor"/><circle cx="16" cy="16" r="2" fill="currentColor"/>
+        </svg>
+        <span class="brand__name">dynavec</span>
+      </a>
+      <nav class="nav__links" aria-label="Primary">
+        <a href="../index.html#why">Why</a>
+        <a href="../index.html#benchmarks">Benchmarks</a>
+        <a href="index.html">Docs</a>
+      </nav>
+      <a class="btn btn--ghost star" href="https://github.com/codeforstartups/dynavec" target="_blank" rel="noopener">
+        <span aria-hidden="true">&#9733;</span> Star <span class="star__count" data-stars>&mdash;</span>
+      </a>
+    </div>
+  </header>
+
+  <div class="docshell">
+    <button class="side__toggle">☰ Menu</button>
+<nav class="side" aria-label="Docs">
+<div class="side__group"><p class="side__title">Getting started</p><ul class="side__list">
+<li><a href="index.html">Overview</a></li>
+<li><a href="installation.html">Installation</a></li>
+<li><a href="quickstart.html">Quickstart</a></li>
+<li><a href="configuration.html">Configuration</a></li>
+<li><a href="faq.html">FAQ</a></li>
+</ul></div>
+<div class="side__group"><p class="side__title">Writing data</p><ul class="side__list">
+<li><a href="embeddings.html">Embeddings</a></li>
+<li><a href="upsert.html">Upsert</a></li>
+<li><a href="update-and-lambda.html">Update & Lambda</a></li>
+<li><a href="ingestion.html">Ingestion & MCP</a></li>
+</ul></div>
+<div class="side__group"><p class="side__title">Searching</p><ul class="side__list">
+<li><a href="search.html">Search</a></li>
+<li><a href="metrics-and-rerank.html">Metrics & rerank</a></li>
+<li><a href="namespaces.html">Namespaces</a></li>
+<li><a href="streaming.html">Streaming</a></li>
+<li><a href="caching.html">Caching</a></li>
+</ul></div>
+<div class="side__group"><p class="side__title">Advanced</p><ul class="side__list">
+<li><a href="knowledge-graph.html">Knowledge graph</a></li>
+<li><a href="hot-tier.html" class="is-current">In-memory hot tier</a></li>
+<li><a href="quantization.html">Product quantization</a></li>
+<li><a href="concurrency.html">Concurrency</a></li>
+<li><a href="credentials.html">Credentials & IAM</a></li>
+</ul></div>
+<div class="side__group"><p class="side__title">Ecosystem</p><ul class="side__list">
+<li><a href="integrations.html">Framework integrations</a></li>
+<li><a href="dashboard.html">Telemetry dashboard</a></li>
+<li><a href="benchmarking.html">Benchmarking</a></li>
+</ul></div>
+<div class="side__group"><p class="side__title">About</p><ul class="side__list">
+<li><a href="release-notes.html">Release notes</a></li>
+</ul></div>
+</nav>
+    <main class="doc">
+      <div class="doc__crumbs"><a href="../index.html">dynavec</a> / <a href="index.html">Docs</a> / In-memory hot tier</div>
+      <h1>In-memory hot tier</h1>
+      <p class="doc__sub">Pinecone-class latency for the hot working set — without a paid cluster.</p>
+      
+<p>Amazon S3 Vectors is cheap and serverless, but it is an object-backed ANN: its per-query
+server time is hundreds of milliseconds. For the <em>hot</em> working set, dynavec can keep vectors
+in RAM (via the built-in <code>SPFreshHotIndex</code>) so a warmed namespace is served
+<strong>entirely from memory</strong> — no S3 Vectors query and no DynamoDB hydration, since the hot
+index already holds text and metadata. That collapses p50 from hundreds of ms to sub-millisecond,
+and it costs nothing extra: the index lives in the compute you already run.</p>
+
+<div class="callout"><strong>Correctness first.</strong> A namespace is served from RAM only when it
+is <em>authoritative</em> — every one of its vectors is resident. Any namespace that was never warmed,
+or has grown past the RAM cap, transparently falls back to the S3 Vectors path. The hot tier can only
+ever make queries faster, never wrong.</div>
+
+<h2>Enable it</h2>
+<pre class="code"><code>from dynavec import Dynavec, DynavecConfig
+
+cfg = DynavecConfig(
+    vector_bucket="my-vectors", index="docs", table="dynavec_docs",
+    dimension=1536, region="us-east-1", auto_provision=True,
+    hot_tier=True,                 # keep a hot working set in RAM
+    hot_tier_max_vectors=200_000,  # global RAM safety cap across namespaces
+)
+db = Dynavec(cfg, embedder=my_embedder)
+
+db.warm(namespace="default")       # load from S3 Vectors -> RAM (authoritative)
+hits = db.search("query", top_k=5) # served from memory: no S3, no DynamoDB
+print(db.hot_stats())              # {'authoritative_namespaces': ['default'], ...}</code></pre>
+<h2>How it works</h2>
+<ul>
+  <li><strong>warm(namespace)</strong> scans the namespace from S3 Vectors, hydrates text from
+      DynamoDB, and holds it in RAM. If it fits under <code>hot_tier_max_vectors</code> the namespace
+      becomes authoritative; otherwise it stays on the S3 path.</li>
+  <li><strong>Write-through:</strong> <code>upsert</code>, <code>update</code>, and <code>delete</code>
+      keep warmed namespaces current, so you rarely need to re-warm.</li>
+  <li><strong>Full query semantics on the hot path:</strong> metadata filters (the same MongoDB-style
+      dialect), rescoring, and MMR reranking all run in-process. A filter the in-memory matcher can't
+      express falls back to S3 rather than returning a wrong result.</li>
+  <li><strong>Reconcile</strong> after out-of-band writes by calling <code>warm()</code> again.</li>
+</ul>
+
+<div class="callout">This is how dynavec approaches Pinecone's latency without an always-on RAM cluster:
+keep only the <em>hot</em> set in memory, and let cold/bulk data stay on cheap S3 Vectors.</div>
+
+      <div class="doc__next"><a href="knowledge-graph.html"><span>Previous</span>Knowledge graph</a><a href="quantization.html" style="text-align:right"><span>Next</span>Product quantization</a></div>
+    </main>
+  </div>
+
+  <script src="docs.js"></script>
+</body>
+</html>

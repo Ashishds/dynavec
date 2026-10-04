@@ -54,26 +54,114 @@ UV_PUBLISH_TOKEN=pypi-XXXX uv publish
 
 Tip: test on TestPyPI first with `uv publish --publish-url https://test.pypi.org/legacy/`.
 
----
+## 2. Deploy Web Console & Landing Page
 
-## 2. Deploy the landing page to GitHub Pages
+The `dashboard/` directory contains a unified Next.js web application encompassing both the marketing landing page and the enterprise console.
 
-The workflow `.github/workflows/pages.yml` publishes `opensource/dynavec/`.
+### Option A: Vercel (Fastest & Zero-Maintenance)
 
-1. Repo → **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-2. Push to `development` touching `opensource/dynavec/**` (or run the workflow
-   manually from the Actions tab). The site goes live at
-   `https://codeforstartups.github.io/dynavec/`.
+The project includes a pre-configured `dashboard/vercel.json`.
 
-To refresh the benchmark charts before deploying:
+1. Import the repository into [Vercel](https://vercel.com).
+2. Set **Root Directory** to `dashboard`.
+3. Framework Preset: **Next.js** (Auto-detected).
+4. Build Command: `npm run build` (Static export to `out`).
+5. (Optional) Set Environment Variable:
+   - `NEXT_PUBLIC_DYNAVEC_API`: URL of your live Python Telemetry API (e.g., `https://api.yourdomain.com`).
+6. Deploy.
+
+Alternatively, via Vercel CLI:
+```bash
+cd dashboard
+npx vercel --prod
+```
+
+### Option B: AWS S3 + CloudFront (Enterprise Serverless)
+
+Exported static assets in `dashboard/out` can be hosted on Amazon S3 fronted by AWS CloudFront:
 
 ```bash
-python -m benchmarks.report --out opensource/dynavec/images
+cd dashboard
+npm ci
+npm run build
+
+# Sync static build output to S3 bucket
+aws s3 sync out/ s3://dynavec-console-bucket --delete
+
+# Invalidate CloudFront edge cache
+aws cloudfront create-invalidation --distribution-id YOUR_DIST_ID --paths "/*"
+```
+
+Configure CloudFront with:
+- Origin Access Control (OAC) to the S3 bucket.
+- Custom Error Responses: Map HTTP 403 & 404 to `/index.html` with response code 200 for client-side navigation.
+
+### Option C: GitHub Pages via Automated Workflow
+
+The repository includes `.github/workflows/deploy-pages.yml` which automatically builds and publishes both the landing page and static dashboard:
+
+1. Repo → **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+2. Push to `main` or trigger manually from the Actions tab.
+3. The site goes live at `https://codeforstartups.github.io/dynavec/`.
+
+---
+
+## 3. Deploy Live Telemetry & Query API
+
+The Python API serves live vector queries, cluster health, latency percentiles, and traces (`examples/aws_live_dashboard.py` / `dynavec.dashboard`).
+
+### Option A: Containerized Deployment (Docker / AWS ECS / App Runner)
+
+Use the root `Dockerfile` and `docker-compose.yml`:
+
+```bash
+# Build and run locally or on an EC2 instance
+docker compose up -d
+
+# Check running services
+docker ps
+```
+
+To deploy on **AWS App Runner** or **AWS ECS Fargate**:
+1. Push image to Amazon ECR:
+   ```bash
+   aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
+   docker build -t dynavec-service:latest .
+   docker tag dynavec-service:latest <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/dynavec-service:latest
+   docker push <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/dynavec-service:latest
+   ```
+2. Create an App Runner Service or ECS Task Definition with task role granting DynamoDB and S3 Vectors access (see IAM policy below).
+
+### Option B: Standalone Service with Token Security
+
+Run directly on any Linux / Windows host:
+
+```bash
+export DYNAVEC_DASHBOARD_TOKEN="your-secure-bearer-token"
+dynavec dashboard --port 8778 --host 0.0.0.0
 ```
 
 ---
 
-## 3. AWS credentials (.env) + IAM permissions
+## 4. Cloud Infrastructure via Terraform
+
+Provision the AWS DynamoDB table and S3 Vector bucket using the checked-in Terraform configuration:
+
+```bash
+cd deploy/terraform
+terraform init
+terraform plan
+terraform apply -auto-approve
+```
+
+This creates:
+- **DynamoDB Table**: `dynavec_docs` (Mode: `PAY_PER_REQUEST` / ₹0 when idle)
+- **S3 Vector Bucket**: Server-side encrypted with AES-256
+- **S3 Vectors Index**: Cosine similarity index
+
+---
+
+## 5. AWS credentials (.env) + IAM permissions
 
 ### The `.env`
 
@@ -149,3 +237,23 @@ Add these statements to the policy if the corresponding feature is used:
 `.env` is in `.gitignore`. For CI, put keys in **GitHub Secrets**, not the repo.
 For production apps, prefer an **IAM role** (instance/task role, or OIDC) over
 long-lived access keys entirely.
+
+---
+
+## 6. Post-Deployment Verification & Smoke Test
+
+Once deployed, verify end-to-end cloud connectivity, dual-write consistency, and cache performance:
+
+```bash
+python scripts/production_smoke_test.py
+```
+
+Expected verification output:
+```
+CHECK                                  | STATUS   | LATENCY / DETAILS
+Dual-Write Ingestion (DynamoDB + S3)   | [PASS]   | Dual-write confirmed
+Cold AWS Cloud Search                  | [PASS]   | In-cluster vector match
+Warm Semantic Cache Hit                | [PASS]   | < 1.0 ms response
+>>> ALL PRODUCTION INVARIANTS VERIFIED SUCCESSFULLY! <<<
+```
+

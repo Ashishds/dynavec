@@ -27,8 +27,13 @@ htmlcov/
 # Node / Next.js
 node_modules/
 .next/
+.next-build/
 out/
 npm-debug.log*
+*.tsbuildinfo
+
+# Scratch / Temporary
+scratch/
 
 # Terraform
 .terraform/
@@ -36,4 +41,5 @@ npm-debug.log*
 *.tfstate.*
 .terraform.lock.hcl
 crash.log
+
 

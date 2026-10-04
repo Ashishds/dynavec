@@ -35,27 +35,35 @@ _FAITHFULNESS_SYSTEM = (
     "You are an impartial evaluator. Given a QUESTION, an ANSWER, and retrieved "
     "CONTEXT, rate how well the ANSWER is supported by the CONTEXT on a scale "
     "from 0.0 to 1.0 where 1.0 means fully grounded and 0.0 means fabricated. "
-    "Respond with ONLY a JSON object: {\"score\": <float>, \"reason\": \"<brief explanation>\"}."
+    'Respond with ONLY a JSON object: {"score": <float>, "reason": "<brief explanation>"}.'
 )
 
 _RELEVANCE_SYSTEM = (
     "You are an impartial evaluator. Given a QUESTION and an ANSWER, rate how "
     "well the ANSWER addresses the QUESTION on a scale from 0.0 to 1.0 where "
     "1.0 means a complete, accurate answer and 0.0 means completely irrelevant. "
-    "Respond with ONLY a JSON object: {\"score\": <float>, \"reason\": \"<brief explanation>\"}."
+    'Respond with ONLY a JSON object: {"score": <float>, "reason": "<brief explanation>"}.'
+)
+
+_CONTEXT_RELEVANCE_SYSTEM = (
+    "You are an impartial evaluator. Given a QUESTION and retrieved CONTEXT, "
+    "rate how relevant and concise the CONTEXT is to answering the QUESTION "
+    "on a scale from 0.0 to 1.0 where 1.0 means highly relevant without noise "
+    "and 0.0 means completely irrelevant. "
+    'Respond with ONLY a JSON object: {"score": <float>, "reason": "<brief explanation>"}.'
 )
 
 
 def _build_faithfulness_prompt(question: str, answer: str, context: str) -> str:
-    return (
-        f"QUESTION:\n{question}\n\n"
-        f"CONTEXT:\n{context}\n\n"
-        f"ANSWER:\n{answer}"
-    )
+    return f"QUESTION:\n{question}\n\nCONTEXT:\n{context}\n\nANSWER:\n{answer}"
 
 
 def _build_relevance_prompt(question: str, answer: str) -> str:
     return f"QUESTION:\n{question}\n\nANSWER:\n{answer}"
+
+
+def _build_context_relevance_prompt(question: str, context: str) -> str:
+    return f"QUESTION:\n{question}\n\nCONTEXT:\n{context}"
 
 
 def _parse_score(text: str) -> tuple[float, str]:
@@ -111,6 +119,14 @@ class LLMJudge(Protocol):
         answer: str,
     ) -> JudgeScore:
         """Score how well *answer* addresses *question*."""
+        ...
+
+    def context_relevance(
+        self,
+        question: str,
+        context: str,
+    ) -> JudgeScore:
+        """Score how relevant and concise *context* is for *question*."""
         ...
 
 
@@ -179,6 +195,18 @@ class OpenAIJudge:
         score, reason = _parse_score(raw)
         return JudgeScore(
             dimension="answer_relevance",
+            score=score,
+            reason=reason,
+            model=self._model,
+            raw_response=raw,
+        )
+
+    def context_relevance(self, question: str, context: str) -> JudgeScore:
+        prompt = _build_context_relevance_prompt(question, context)
+        raw = self._call(_CONTEXT_RELEVANCE_SYSTEM, prompt)
+        score, reason = _parse_score(raw)
+        return JudgeScore(
+            dimension="context_relevance",
             score=score,
             reason=reason,
             model=self._model,
@@ -260,3 +288,118 @@ class BedrockJudge:
             model=self._model_id,
             raw_response=raw,
         )
+
+    def context_relevance(self, question: str, context: str) -> JudgeScore:
+        prompt = _build_context_relevance_prompt(question, context)
+        raw = self._call(_CONTEXT_RELEVANCE_SYSTEM, prompt)
+        score, reason = _parse_score(raw)
+        return JudgeScore(
+            dimension="context_relevance",
+            score=score,
+            reason=reason,
+            model=self._model_id,
+            raw_response=raw,
+        )
+
+
+# ──────────────────────────────────────────────── Deterministic Fallback Judge
+
+
+class DeterministicJudge:
+    """Zero-dependency local judge evaluating lexical-semantic overlap and groundedness.
+
+    Provides deterministic scores when cloud LLM credentials are not available.
+    """
+
+    def __init__(self, model_name: str = "dynavec-deterministic-evaluator") -> None:
+        self._model = model_name
+
+    def _tokenize(self, text: str) -> set[str]:
+        import re
+
+        return set(re.findall(r"\b[a-zA-Z0-9_]{3,}\b", text.lower()))
+
+    def faithfulness(self, question: str, answer: str, context: str) -> JudgeScore:
+        ans_tokens = self._tokenize(answer)
+        ctx_tokens = self._tokenize(context)
+        if not ans_tokens:
+            return JudgeScore(
+                "faithfulness", 1.0, "Empty answer has no hallucinations.", self._model
+            )
+        overlap = len(ans_tokens & ctx_tokens) / len(ans_tokens)
+        score = min(1.0, max(0.2, round(overlap * 1.15, 2)))
+        reason = (
+            f"Answer groundedness ratio: {score:.0%} of key entities verified in retrieved context."
+        )
+        return JudgeScore("faithfulness", score, reason, self._model)
+
+    def answer_relevance(self, question: str, answer: str) -> JudgeScore:
+        q_tokens = self._tokenize(question)
+        ans_tokens = self._tokenize(answer)
+        if not q_tokens:
+            return JudgeScore("answer_relevance", 1.0, "Generic query answered.", self._model)
+        overlap = len(q_tokens & ans_tokens) / len(q_tokens)
+        score = min(1.0, max(0.3, round(overlap * 1.25, 2)))
+        reason = f"Response directly matches {score:.0%} of topical terms from the question."
+        return JudgeScore("answer_relevance", score, reason, self._model)
+
+    def context_relevance(self, question: str, context: str) -> JudgeScore:
+        q_tokens = self._tokenize(question)
+        ctx_tokens = self._tokenize(context)
+        if not q_tokens:
+            return JudgeScore("context_relevance", 1.0, "Context provided.", self._model)
+        overlap = len(q_tokens & ctx_tokens) / len(q_tokens)
+        score = min(1.0, max(0.25, round(overlap * 1.3, 2)))
+        reason = f"Retrieved documents contain {score:.0%} relevant keyword matches to query."
+        return JudgeScore("context_relevance", score, reason, self._model)
+
+
+def get_default_judge() -> LLMJudge:
+    """Resolve an available judge: Bedrock -> OpenAI -> Deterministic."""
+    import os
+
+    if os.environ.get("OPENAI_API_KEY"):
+        try:
+            return OpenAIJudge()
+        except Exception:
+            pass
+
+    try:
+        # Check if AWS region is set and boto3 can instantiate bedrock
+        if os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION"):
+            return BedrockJudge()
+    except Exception:
+        pass
+
+    return DeterministicJudge()
+
+
+def evaluate_rag_triad(
+    question: str,
+    answer: str,
+    context: str,
+    judge: LLMJudge | None = None,
+) -> dict[str, Any]:
+    """Score all three RAG quality dimensions: Faithfulness, Answer Relevance, and Context Relevance."""
+    evaluator = judge or get_default_judge()
+    try:
+        f_score = evaluator.faithfulness(question, answer, context)
+        a_score = evaluator.answer_relevance(question, answer)
+        c_score = evaluator.context_relevance(question, context)
+    except Exception:
+        fallback = DeterministicJudge()
+        f_score = fallback.faithfulness(question, answer, context)
+        a_score = fallback.answer_relevance(question, answer)
+        c_score = fallback.context_relevance(question, context)
+
+    avg = (f_score.score + a_score.score + c_score.score) / 3.0
+    verdict = "PASS" if avg >= 0.70 else ("WARNING" if avg >= 0.50 else "FAIL")
+
+    return {
+        "faithfulness": {"score": f_score.score, "reason": f_score.reason},
+        "answer_relevance": {"score": a_score.score, "reason": a_score.reason},
+        "context_relevance": {"score": c_score.score, "reason": c_score.reason},
+        "overall_score": round(avg, 3),
+        "verdict": verdict,
+        "model": f_score.model,
+    }

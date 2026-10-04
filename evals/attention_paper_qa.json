@@ -1,0 +1,96 @@
+{
+  "name": "attention-paper-qa",
+  "description": "Ground-truth Q&A evaluation dataset for 'Attention Is All You Need' (Vaswani et al., 2017). Each query maps to the page(s) containing the answer. Used with dynavec.eval.run_eval() to benchmark retrieval quality.",
+  "queries": [
+    {
+      "text": "What is multi-head attention and how does it work?",
+      "relevant_ids": ["1706.03762v7 (3).pdf#p5#c0", "1706.03762v7 (3).pdf#p5#c1", "1706.03762v7 (3).pdf#p4#c0"],
+      "expected_page": 5,
+      "notes": "Section 3.2.2 Multi-Head Attention - h parallel attention layers"
+    },
+    {
+      "text": "How does positional encoding work in transformers?",
+      "relevant_ids": ["1706.03762v7 (3).pdf#p6#c0", "1706.03762v7 (3).pdf#p6#c1"],
+      "expected_page": 6,
+      "notes": "Section 3.5 Positional Encoding - sine and cosine functions"
+    },
+    {
+      "text": "What is the scaled dot-product attention formula?",
+      "relevant_ids": ["1706.03762v7 (3).pdf#p4#c0", "1706.03762v7 (3).pdf#p4#c1"],
+      "expected_page": 4,
+      "notes": "Section 3.2.1 - Attention(Q,K,V) = softmax(QK^T / sqrt(d_k))V"
+    },
+    {
+      "text": "Why is self-attention faster than recurrent layers?",
+      "relevant_ids": ["1706.03762v7 (3).pdf#p5#c0", "1706.03762v7 (3).pdf#p5#c1"],
+      "expected_page": 5,
+      "notes": "Table 1 - O(1) sequential operations vs O(n) for RNNs"
+    },
+    {
+      "text": "What is the encoder and decoder architecture in transformer?",
+      "relevant_ids": ["1706.03762v7 (3).pdf#p3#c0", "1706.03762v7 (3).pdf#p3#c1", "1706.03762v7 (3).pdf#p2#c0"],
+      "expected_page": 3,
+      "notes": "Section 3.1 - Encoder and Decoder stacks"
+    },
+    {
+      "text": "What optimizer and training hyperparameters were used?",
+      "relevant_ids": ["1706.03762v7 (3).pdf#p7#c0", "1706.03762v7 (3).pdf#p7#c1"],
+      "expected_page": 7,
+      "notes": "Section 5.3 - Adam optimizer, beta1=0.9, beta2=0.98, dropout=0.1"
+    },
+    {
+      "text": "What BLEU score did the transformer achieve on WMT translation?",
+      "relevant_ids": ["1706.03762v7 (3).pdf#p8#c0", "1706.03762v7 (3).pdf#p8#c1"],
+      "expected_page": 8,
+      "notes": "Section 6 - EN-DE: 28.4 BLEU, EN-FR: 41.0 BLEU"
+    },
+    {
+      "text": "What is the feed-forward network in the transformer?",
+      "relevant_ids": ["1706.03762v7 (3).pdf#p5#c0", "1706.03762v7 (3).pdf#p4#c1"],
+      "expected_page": 5,
+      "notes": "Section 3.3 - FFN(x) = max(0, xW1+b1)W2+b2, d_ff=2048"
+    },
+    {
+      "text": "What model dimensions were used in transformer base and large?",
+      "relevant_ids": ["1706.03762v7 (3).pdf#p8#c0", "1706.03762v7 (3).pdf#p7#c0"],
+      "expected_page": 8,
+      "notes": "Table 3 - Base: d_model=512, h=8. Large: d_model=1024, h=16"
+    },
+    {
+      "text": "How does residual connection and layer normalization work?",
+      "relevant_ids": ["1706.03762v7 (3).pdf#p3#c0", "1706.03762v7 (3).pdf#p3#c1"],
+      "expected_page": 3,
+      "notes": "Section 3.1 - LayerNorm(x + Sublayer(x))"
+    },
+    {
+      "text": "What is the attention head dimension dk and dv?",
+      "relevant_ids": ["1706.03762v7 (3).pdf#p4#c0", "1706.03762v7 (3).pdf#p5#c0"],
+      "expected_page": 4,
+      "notes": "Section 3.2.2 - dk = dv = d_model/h = 64"
+    },
+    {
+      "text": "What are the different attention variants used in encoder and decoder?",
+      "relevant_ids": ["1706.03762v7 (3).pdf#p5#c0", "1706.03762v7 (3).pdf#p4#c0"],
+      "expected_page": 5,
+      "notes": "Section 3.2.3 - encoder self-attn, decoder self-attn (masked), encoder-decoder attn"
+    },
+    {
+      "text": "What is the beam search width used in inference?",
+      "relevant_ids": ["1706.03762v7 (3).pdf#p8#c0", "1706.03762v7 (3).pdf#p7#c1"],
+      "expected_page": 8,
+      "notes": "Section 6.1 - beam size 4, length penalty alpha=0.6"
+    },
+    {
+      "text": "What ablation study was performed on model components?",
+      "relevant_ids": ["1706.03762v7 (3).pdf#p9#c0", "1706.03762v7 (3).pdf#p9#c1"],
+      "expected_page": 9,
+      "notes": "Table 3 - varying number of heads, attention key size, model size"
+    },
+    {
+      "text": "Why does the model use key dimension square root scaling?",
+      "relevant_ids": ["1706.03762v7 (3).pdf#p4#c0", "1706.03762v7 (3).pdf#p4#c1"],
+      "expected_page": 4,
+      "notes": "Section 3.2.1 - dot products grow large in magnitude, pushing softmax into small gradient regions"
+    }
+  ]
+}

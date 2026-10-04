@@ -16,9 +16,15 @@ import TracesTable from "@/components/TracesTable";
 import VolumeChart from "@/components/VolumeChart";
 import { getEvalRuns, getMetrics, getTrace, getTraces, isLive } from "@/lib/api";
 import type { EvalRun, Metrics, TraceEvent, TraceFilters } from "@/lib/types";
+import LandingPage from "@/components/LandingPage";
+import AgentCanvas from "@/components/agents/AgentCanvas";
+import WorkflowsPanel from "@/components/agents/WorkflowsPanel";
+import TestSuitePanel from "@/components/agents/TestSuitePanel";
 
 export default function Page() {
-  const [view, setView] = useState("tracing");
+  const [view, setView] = useState("landing");
+  const [activeTemplateId, setActiveTemplateId] = useState<string | undefined>(undefined);
+  const [traceToReplay, setTraceToReplay] = useState<TraceEvent | null>(null);
   const [win, setWin] = useState(3600);
   const [auto, setAuto] = useState(true);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
@@ -40,19 +46,109 @@ export default function Page() {
     }
   }, [view]);
 
-  useEffect(() => { refresh(); }, [refresh]);
   useEffect(() => {
-    if (!auto) return;
-    const id = setInterval(refresh, 4000);
-    return () => clearInterval(id);
-  }, [auto, refresh]);
+    if (view !== "landing") {
+      refresh();
+    }
+  }, [refresh, view]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab && tab !== "landing") {
+        setView(tab);
+      } else {
+        setView("landing");
+      }
+
+      const handlePopState = () => {
+        const p = new URLSearchParams(window.location.search);
+        const t = p.get("tab");
+        setView(t && t !== "landing" ? t : "landing");
+      };
+      window.addEventListener("popstate", handlePopState);
+      return () => window.removeEventListener("popstate", handlePopState);
+    }
+  }, []);
+
+  const handleViewChange = (v: string) => {
+    setView(v);
+    if (typeof window !== "undefined") {
+      if (v === "landing") {
+        window.history.pushState(null, "", "/");
+      } else {
+        window.history.pushState(null, "", `?tab=${v}`);
+      }
+    }
+  };
+
+  if (view === "landing") {
+    return <LandingPage onNavigate={handleViewChange} />;
+  }
 
   return (
     <>
-      <TopBar window={win} onWindow={setWin} auto={auto} onAuto={() => setAuto((a) => !a)} live={isLive()} />
+      <TopBar
+        window={win}
+        onWindow={setWin}
+        auto={auto}
+        onAuto={() => setAuto((a) => !a)}
+        live={isLive()}
+        hideControls={view === "playground" || view === "canvas"}
+        onHome={() => handleViewChange("landing")}
+      />
       <div className="flex min-h-[calc(100vh-52px)]">
-        <Sidebar view={view} onView={setView} />
-        <main className="flex-1 min-w-0 p-6">
+        <Sidebar view={view} onView={handleViewChange} />
+        <main className={`flex-1 min-w-0 ${view === "canvas" ? "p-0" : "p-6"}`}>
+          {view === "canvas" && (
+            <AgentCanvas
+              initialTemplateId={activeTemplateId}
+              initialTraceToReplay={traceToReplay}
+              onNavigateToTracing={(traceId) => {
+                handleViewChange("tracing");
+              }}
+            />
+          )}
+          {view === "workflows" && (
+            <WorkflowsPanel
+              onOpenCanvas={(templateId) => {
+                setActiveTemplateId(templateId);
+                handleViewChange("canvas");
+              }}
+              onNavigateToTracing={() => handleViewChange("tracing")}
+            />
+          )}
+          {view === "tests" && (
+            <TestSuitePanel
+              onReplayTestCase={(tc) => {
+                const trace: TraceEvent = {
+                  id: tc.id,
+                  ts: Math.floor(Date.now() / 1000),
+                  op: "agent_eval",
+                  namespace: "knowledge-base",
+                  latency_ms: tc.durationMs || 142,
+                  n_results: 5,
+                  top_k: 5,
+                  cache_hit: tc.name.includes("cache"),
+                  filtered: false,
+                  rescore: null,
+                  rerank: "cross-encoder",
+                  score_top: tc.faithfulness || 0.95,
+                  score_mean: 0.90,
+                  status: tc.status === "failed" ? "err" : "ok",
+                  error: null,
+                  query_preview: tc.query,
+                };
+                setTraceToReplay(trace);
+                handleViewChange("canvas");
+              }}
+              onOpenCanvas={(templateId) => {
+                setActiveTemplateId(templateId);
+                handleViewChange("canvas");
+              }}
+            />
+          )}
           {view === "tracing" && (
             <>
               {metrics && <Kpis m={metrics} />}
@@ -90,7 +186,15 @@ export default function Page() {
           )}
         </main>
       </div>
-      <TraceDrawer trace={selected} onClose={() => setSelected(null)} />
+      <TraceDrawer
+        trace={selected}
+        onClose={() => setSelected(null)}
+        onReplayTrace={(t) => {
+          setSelected(null);
+          setTraceToReplay(t);
+          handleViewChange("canvas");
+        }}
+      />
     </>
   );
 }

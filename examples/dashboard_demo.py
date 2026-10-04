@@ -162,7 +162,7 @@ def main() -> None:
             time.sleep(random.uniform(0.05, 0.25))
 
     threading.Thread(target=workload, daemon=True).start()
-    serve(rec, port=8779)
+    serve(rec, port=8779, eval_dir="evals", db=db)
 
 
 if __name__ == "__main__":

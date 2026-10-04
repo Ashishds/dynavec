@@ -144,15 +144,13 @@ class DynavecConfig:
         index = overrides.get("index", _get("INDEX"))
         if not index:
             raise ValueError(
-                f"Missing required environment variable '{prefix}INDEX' "
-                "or 'index' argument."
+                f"Missing required environment variable '{prefix}INDEX' or 'index' argument."
             )
 
         table = overrides.get("table", _get("TABLE"))
         if not table:
             raise ValueError(
-                f"Missing required environment variable '{prefix}TABLE' "
-                "or 'table' argument."
+                f"Missing required environment variable '{prefix}TABLE' or 'table' argument."
             )
 
         dim_str = overrides.get("dimension", _get("DIMENSION"))
@@ -230,4 +228,3 @@ class DynavecConfig:
                 f"Invalid DynamoDB table name {self.table!r}. "
                 "Must be 3-255 characters containing letters, numbers, hyphens, underscores, or dots."
             )
-

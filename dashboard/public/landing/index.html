@@ -1,0 +1,814 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>dynavec — serverless hybrid vector database on AWS</title>
+  <meta name="description" content="dynavec fuses DynamoDB and Amazon S3 Vectors into a serverless, in-your-own-account vector database. An open-source alternative to Pinecone, Qdrant, Milvus, Weaviate, and OpenSearch." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body>
+  <!-- Ambient background: node network + blobs -->
+  <canvas id="bg-canvas" aria-hidden="true"></canvas>
+  <div class="bg-blobs" aria-hidden="true">
+    <div class="bg-blob bg-blob--1"></div>
+    <div class="bg-blob bg-blob--2"></div>
+    <div class="bg-blob bg-blob--3"></div>
+    <div class="bg-blob bg-blob--4"></div>
+  </div>
+
+  <a class="skip" href="#main">Skip to content</a>
+
+  <!-- ============ NAV ============ -->
+  <header class="nav" id="nav">
+    <div class="wrap nav__inner">
+      <a class="brand" href="#top" aria-label="dynavec home">
+        <svg class="brand__mark" width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+          <rect x="1" y="1" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="1" y1="11" x2="21" y2="11" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="11" y1="1" x2="11" y2="21" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="2" fill="currentColor"/>
+          <circle cx="16" cy="16" r="2" fill="currentColor"/>
+        </svg>
+        <span class="brand__name">dynavec</span>
+      </a>
+      <nav class="nav__links" aria-label="Primary">
+        <a href="#why">Why</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#benchmarks">Benchmarks</a>
+        <a href="#quickstart">Quick start</a>
+        <a href="explainer.html">Watch</a>
+        <a href="docs/index.html">Docs</a>
+        <a href="#contribute">Contribute</a>
+      </nav>
+      <a class="btn btn--ghost star" href="https://github.com/codeforstartups/dynavec" target="_blank" rel="noopener">
+        <span aria-hidden="true">★</span> Star
+        <span class="star__count" data-stars>27</span>
+      </a>
+      <a class="btn btn--solid nav__console" href="/?tab=playground" target="_top">
+        Console <span aria-hidden="true">&rarr;</span>
+      </a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- ============ HERO ============ -->
+    <section class="hero" id="top">
+      <div class="wrap">
+        <div class="hero__grid">
+        <div class="hero__col">
+        <p class="eyebrow">Open source · Apache-2.0 · runs in your AWS account</p>
+        <h1 class="hero__title">The serverless vector database<br />that lives in <span class="u">your</span> AWS account.</h1>
+        <p class="hero__lede">
+          dynavec fuses <a class="svc-link" href="https://aws.amazon.com/dynamodb/" target="_blank" rel="noopener"><strong>Amazon DynamoDB</strong></a> (single-digit-millisecond metadata &amp; document store)
+          with <a class="svc-link" href="https://aws.amazon.com/s3/features/vectors/" target="_blank" rel="noopener"><strong>Amazon S3 Vectors</strong></a> (billion-scale, serverless ANN) into one Python client —
+          a drop-in alternative to Pinecone, Qdrant, Milvus, Weaviate, and OpenSearch that
+          <strong>bills only when you use it</strong> and keeps every byte in your own region.
+        </p>
+
+        <div class="install">
+          <div class="install__row">
+            <code>pip install dynavec</code>
+            <button class="copy" data-copy="pip install dynavec" aria-label="Copy">copy</button>
+          </div>
+          <div class="install__row">
+            <code>uv add dynavec</code>
+            <button class="copy" data-copy="uv add dynavec" aria-label="Copy">copy</button>
+          </div>
+        </div>
+
+        <div class="hero__cta">
+          <a class="btn btn--solid hero__cta-console" href="/?tab=playground" target="_top">Launch Console <span aria-hidden="true">&rarr;</span></a>
+          <a class="btn btn--ghost" href="docs/index.html">Read the docs</a>
+          <a class="btn btn--ghost" href="https://github.com/codeforstartups/dynavec" target="_blank" rel="noopener">View on GitHub</a>
+        </div>
+        </div><!-- /hero__col -->
+
+        <div class="hero__media">
+          <a class="yt-facade" id="yt-facade" href="https://www.youtube.com/watch?v=UJ9MBALD380" target="_blank" rel="noopener noreferrer" aria-label="Watch dynavec demo video (opens in a new tab)">
+            <img class="yt-facade__thumb" src="https://img.youtube.com/vi/UJ9MBALD380/maxresdefault.jpg" alt="dynavec demo video thumbnail" loading="lazy" />
+            <span class="yt-facade__play" aria-hidden="true">
+              <svg viewBox="0 0 68 48" width="68" height="48"><path d="M66.5 7.7a8.5 8.5 0 0 0-6-6C56 0 34 0 34 0S12 0 7.5 1.7a8.5 8.5 0 0 0-6 6C0 12.1 0 24 0 24s0 11.9 1.5 16.3a8.5 8.5 0 0 0 6 6C12 48 34 48 34 48s22 0 26.5-1.7a8.5 8.5 0 0 0 6-6C68 35.9 68 24 68 24s0-11.9-1.5-16.3z" fill="#ff0000"/><path d="M27 34l18-10-18-10v20z" fill="#fff"/></svg>
+            </span>
+          </a>
+        </div>
+        </div><!-- /hero__grid -->
+
+        <ul class="hero__stats">
+          <li><span class="stat__n" data-stars>—</span><span class="stat__l">GitHub stars</span></li>
+          <li><span class="stat__n stat__n--accent">$469</span><span class="stat__l">/mo at 1B vectors*</span></li>
+          <li><span class="stat__n stat__n--accent">100%</span><span class="stat__l">in your account</span></li>
+          <li><span class="stat__n">0</span><span class="stat__l">servers to run</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ BUILT ON AWS ============ -->
+    <section class="builton" aria-label="Built on AWS">
+      <div class="wrap">
+        <p class="builton__eyebrow">Built on two AWS primitives you already trust</p>
+        <div class="stack">
+          <a class="svc" href="https://aws.amazon.com/dynamodb/" target="_blank" rel="noopener">
+            <span class="svc__icon">
+              <svg viewBox="0 0 48 48" width="46" height="46" aria-hidden="true">
+                <defs>
+                  <linearGradient id="gddb" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#5B7BF7" /><stop offset="1" stop-color="#1B2C93" />
+                  </linearGradient>
+                </defs>
+                <rect width="48" height="48" rx="11" fill="url(#gddb)" />
+                <g fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round">
+                  <ellipse cx="24" cy="15" rx="10" ry="4" />
+                  <path d="M14 15 v18 c0 2.2 4.5 4 10 4 s10 -1.8 10 -4 V15" />
+                  <path d="M14 24 c0 2.2 4.5 4 10 4 s10 -1.8 10 -4" />
+                </g>
+              </svg>
+            </span>
+            <span class="svc__body">
+              <span class="svc__name">Amazon DynamoDB <span class="svc__ext" aria-hidden="true">↗</span></span>
+              <span class="svc__role">Single-digit-ms metadata &amp; document store · partition-key scale</span>
+            </span>
+          </a>
+
+          <span class="stack__plus" aria-hidden="true">+</span>
+
+          <a class="svc" href="https://aws.amazon.com/s3/features/vectors/" target="_blank" rel="noopener">
+            <span class="svc__icon">
+              <svg viewBox="0 0 48 48" width="46" height="46" aria-hidden="true">
+                <defs>
+                  <linearGradient id="gs3" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#6FBF4F" /><stop offset="1" stop-color="#1E7A38" />
+                  </linearGradient>
+                </defs>
+                <rect width="48" height="48" rx="11" fill="url(#gs3)" />
+                <g stroke="#fff" stroke-width="2" fill="none" stroke-linejoin="round">
+                  <path d="M15 16 h18 l-2.2 18.5 a1 1 0 0 1 -1 .9 H18.2 a1 1 0 0 1 -1 -.9 Z" />
+                  <ellipse cx="24" cy="16" rx="9" ry="3" />
+                </g>
+                <g fill="#fff">
+                  <circle cx="20" cy="25" r="1.7" /><circle cx="28" cy="23" r="1.7" /><circle cx="25" cy="31" r="1.7" />
+                </g>
+                <g stroke="#fff" stroke-width="1.3" opacity=".85">
+                  <line x1="20" y1="25" x2="28" y2="23" /><line x1="28" y1="23" x2="25" y2="31" /><line x1="25" y1="31" x2="20" y2="25" />
+                </g>
+              </svg>
+            </span>
+            <span class="svc__body">
+              <span class="svc__name">Amazon S3 Vectors <span class="svc__ext" aria-hidden="true">↗</span></span>
+              <span class="svc__role">Billion-scale serverless ANN · storage priced like S3</span>
+            </span>
+          </a>
+        </div>
+        <p class="builton__note">No servers, no managed-database bill — dynavec is just a Python client that orchestrates these two services inside <strong>your</strong> account.</p>
+      </div>
+    </section>
+
+    <!-- ============ WHY ============ -->
+    <section class="section" id="why">
+      <div class="wrap">
+        <h2 class="section__title" data-reveal>Why dynavec</h2>
+        <div class="grid grid--3">
+          <article class="card" data-reveal>
+            <span class="card__icon" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="3 2"/><text x="14" y="19" text-anchor="middle" font-family="var(--mono)" font-size="14" font-weight="700" fill="var(--accent)">$</text></svg></span>
+            <h3>Cost-effective</h3>
+            <p>No always-on cluster, no managed-service premium. You pay S3-priced vector storage plus DynamoDB on-demand. Idle cost approaches storage only.</p>
+          </article>
+          <article class="card" data-reveal>
+            <span class="card__icon" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 28 28" fill="none"><path d="M16 3l-6 12h5l-3 10 10-14h-6l4-8z" fill="var(--accent)" opacity="0.9"/></svg></span>
+            <h3>Lowest latency</h3>
+            <p>S3 Vectors returns the nearest keys; the actual documents are hydrated from DynamoDB in single-digit milliseconds via <code>BatchGetItem</code>.</p>
+          </article>
+          <article class="card" data-reveal>
+            <span class="card__icon" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 28 28" fill="none"><ellipse cx="14" cy="8" rx="9" ry="3.5" stroke="var(--accent)" stroke-width="1.5"/><path d="M5 8v5c0 1.93 4.03 3.5 9 3.5s9-1.57 9-3.5V8" stroke="var(--accent)" stroke-width="1.5"/><path d="M5 13v5c0 1.93 4.03 3.5 9 3.5s9-1.57 9-3.5v-5" stroke="var(--accent)" stroke-width="1.5"/></svg></span>
+            <h3>Billion-scale</h3>
+            <p>Amazon S3 Vectors searches across billions of vectors with 90%+ recall — the serverless ANN engine, managed by AWS.</p>
+          </article>
+          <article class="card" data-reveal>
+            <span class="card__icon" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 28 28" fill="none"><path d="M14 3l9 4v7c0 5-4 9-9 11C9 23 5 19 5 14V7z" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 14l3 3 5-5" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <h3>Data compliance</h3>
+            <p>Everything stays in <em>your</em> account, <em>your</em> region, <em>your</em> availability zones. dynavec only ever calls AWS with your credentials.</p>
+          </article>
+          <article class="card" data-reveal>
+            <span class="card__icon" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect x="8" y="12" width="12" height="9" rx="2" stroke="var(--accent)" stroke-width="1.5"/><path d="M10 12V9a4 4 0 018 0v3" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round"/><circle cx="14" cy="16.5" r="1.5" fill="var(--accent)"/></svg></span>
+            <h3>Secure &amp; elastic</h3>
+            <p>Serverless primitives scale to zero and back automatically. IAM is the only access boundary; assume-role and per-tenant namespaces built in.</p>
+          </article>
+          <article class="card" data-reveal>
+            <span class="card__icon" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect x="4" y="8" width="8" height="6" rx="2" stroke="var(--accent)" stroke-width="1.5"/><rect x="16" y="8" width="8" height="6" rx="2" stroke="var(--accent)" stroke-width="1.5"/><rect x="10" y="18" width="8" height="6" rx="2" stroke="var(--accent)" stroke-width="1.5"/><path d="M8 14v2a6 6 0 004 5.6M20 14v2a6 6 0 01-4 5.6" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round"/></svg></span>
+            <h3>Framework-native</h3>
+            <p>LangChain and LlamaIndex vector stores plus a framework-agnostic retriever tool for LangGraph, CrewAI, and Strands.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ARCHITECTURE ============ -->
+    <section class="section section--alt" id="architecture">
+      <div class="wrap">
+        <h2 class="section__title" data-reveal>How it works</h2>
+        <p class="section__lede">Two AWS primitives, each doing the one job it is best at, joined by a shared key.</p>
+
+        <div class="arch" data-reveal="fade">
+          <svg viewBox="0 0 920 378" class="arch__svg" role="img" aria-label="dynavec architecture: query → Embedder → S3 Vectors ANN → DynamoDB hydration → reranked results">
+            <defs>
+              <!-- Background gradient -->
+              <linearGradient id="arch-bg" x1="0" y1="0" x2="0.25" y2="1">
+                <stop offset="0%" stop-color="#1c1c1c"/>
+                <stop offset="100%" stop-color="#0d0d0d"/>
+              </linearGradient>
+              <!-- S3 Vectors coral gradient -->
+              <linearGradient id="s3-grad" x1="0" y1="0" x2="0.2" y2="1">
+                <stop offset="0%" stop-color="#f06b40"/>
+                <stop offset="100%" stop-color="#c74d1e"/>
+              </linearGradient>
+              <!-- DynamoDB dark gradient -->
+              <linearGradient id="dyn-grad" x1="0" y1="0" x2="0.15" y2="1">
+                <stop offset="0%" stop-color="#222233"/>
+                <stop offset="100%" stop-color="#14141e"/>
+              </linearGradient>
+              <!-- Glass top-to-bottom highlight -->
+              <linearGradient id="glass-hi" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="rgba(255,255,255,0.13)"/>
+                <stop offset="100%" stop-color="rgba(255,255,255,0.01)"/>
+              </linearGradient>
+              <!-- Dot-grid pattern -->
+              <pattern id="dots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+                <circle cx="12" cy="12" r="0.85" fill="rgba(255,255,255,0.07)"/>
+              </pattern>
+              <!-- Arrow markers -->
+              <marker id="aw" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+                <path d="M0,0.5 L0,6.5 L6,3.5 Z" fill="rgba(255,255,255,0.55)"/>
+              </marker>
+              <marker id="ac" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+                <path d="M0,0.5 L0,6.5 L6,3.5 Z" fill="#e8623b"/>
+              </marker>
+              <!-- Shadow filters -->
+              <filter id="fsh-coral" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow dx="0" dy="8" stdDeviation="20" flood-color="rgba(232,98,59,0.42)"/>
+              </filter>
+              <filter id="fsh-card" x="-22%" y="-22%" width="144%" height="144%">
+                <feDropShadow dx="0" dy="5" stdDeviation="12" flood-color="rgba(0,0,0,0.6)"/>
+              </filter>
+              <filter id="fsh-sm" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow dx="0" dy="2" stdDeviation="5" flood-color="rgba(0,0,0,0.45)"/>
+              </filter>
+              <!-- Clip paths for inner glass highlights -->
+              <clipPath id="cp-emb"><rect x="135" y="98" width="158" height="140" rx="13"/></clipPath>
+              <clipPath id="cp-s3"><rect x="348" y="42" width="258" height="200" rx="14"/></clipPath>
+              <clipPath id="cp-dyn"><rect x="348" y="268" width="258" height="92" rx="13"/></clipPath>
+              <clipPath id="cp-res"><rect x="658" y="258" width="252" height="110" rx="13"/></clipPath>
+            </defs>
+
+            <!-- ══ BACKGROUND ════════════════════════════════════ -->
+            <rect width="920" height="378" rx="20" fill="url(#arch-bg)"/>
+            <rect width="920" height="378" rx="20" fill="url(#dots)"/>
+            <rect x="1" y="1" width="918" height="376" rx="19" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+
+            <!-- ══ CONNECTOR ARROWS ══════════════════════════════ -->
+            <!-- query → Embedder -->
+            <line class="d-line" x1="106" y1="177" x2="133" y2="177" stroke="rgba(255,255,255,0.3)" stroke-width="1.5" marker-end="url(#aw)"/>
+            <!-- Embedder → S3 Vectors (curved) -->
+            <path class="d-line" d="M 293,158 C 318,158 332,142 348,142" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" marker-end="url(#aw)"/>
+            <!-- S3 → DynamoDB (vertical) -->
+            <line class="d-line" x1="477" y1="242" x2="477" y2="266" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" marker-end="url(#aw)"/>
+            <!-- "keys + distance" pill -->
+            <rect x="491" y="246" width="114" height="16" rx="5" fill="rgba(255,255,255,0.07)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+            <text x="548" y="258" font-family="JetBrains Mono,monospace" font-size="9" fill="rgba(255,255,255,0.5)" text-anchor="middle">keys + distance</text>
+            <!-- Graph/ER → DynamoDB (coral dashed) -->
+            <line x1="210" y1="315" x2="346" y2="315" stroke="#e8623b" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#ac)"/>
+            <!-- "traverse → scope" pill -->
+            <rect x="212" y="292" width="120" height="16" rx="5" fill="rgba(232,98,59,0.1)" stroke="rgba(232,98,59,0.22)" stroke-width="1"/>
+            <text x="272" y="304" font-family="JetBrains Mono,monospace" font-size="9" fill="rgba(232,98,59,0.75)" text-anchor="middle">traverse → scope</text>
+            <!-- DynamoDB → Results -->
+            <line class="d-line" x1="606" y1="315" x2="656" y2="315" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" marker-end="url(#aw)"/>
+
+            <!-- ══ NODE: query pill ══════════════════════════════ -->
+            <rect x="14" y="158" width="92" height="38" rx="19" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+            <!-- magnifier icon -->
+            <circle cx="37" cy="177" r="7.5" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+            <line x1="42" y1="182" x2="48" y2="188" stroke="rgba(255,255,255,0.5)" stroke-width="2.2" stroke-linecap="round"/>
+            <text x="83" y="181" font-family="JetBrains Mono,monospace" font-size="10.5" font-weight="600" fill="rgba(255,255,255,0.65)" text-anchor="middle">query</text>
+
+            <!-- ══ NODE: Embedder ════════════════════════════════ -->
+            <rect x="135" y="98" width="158" height="140" rx="13" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.11)" stroke-width="1.5" filter="url(#fsh-card)"/>
+            <!-- glass highlight -->
+            <rect x="135" y="98" width="158" height="54" rx="13" fill="url(#glass-hi)" clip-path="url(#cp-emb)"/>
+            <!-- neural-net icon (input × 3 → hidden × 2 → output) -->
+            <g transform="translate(214,138)">
+              <circle cx="-22" cy="-10" r="3.2" fill="rgba(255,255,255,0.6)"/>
+              <circle cx="-22" cy="0"   r="3.2" fill="rgba(255,255,255,0.7)"/>
+              <circle cx="-22" cy="10"  r="3.2" fill="rgba(255,255,255,0.5)"/>
+              <line x1="-18.8" y1="-10" x2="-5.5" y2="-5"  stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+              <line x1="-18.8" y1="-10" x2="-5.5" y2="5"   stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+              <line x1="-18.8" y1="0"   x2="-5.5" y2="-5"  stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+              <line x1="-18.8" y1="0"   x2="-5.5" y2="5"   stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+              <line x1="-18.8" y1="10"  x2="-5.5" y2="-5"  stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+              <line x1="-18.8" y1="10"  x2="-5.5" y2="5"   stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+              <circle cx="-2" cy="-5" r="4" fill="#e8623b" opacity="0.75"/>
+              <circle cx="-2" cy="5"  r="4" fill="#e8623b" opacity="0.75"/>
+              <line x1="2" y1="-5" x2="19" y2="0" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+              <line x1="2" y1="5"  x2="19" y2="0" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+              <circle cx="23" cy="0" r="5.5" fill="#e8623b"/>
+            </g>
+            <text x="214" y="168" font-family="Inter,sans-serif" font-size="13" font-weight="700" fill="rgba(255,255,255,0.92)" text-anchor="middle">Embedder</text>
+            <text x="214" y="185" font-family="JetBrains Mono,monospace" font-size="9.5" fill="rgba(255,255,255,0.38)" text-anchor="middle">BYO key</text>
+            <rect x="160" y="197" width="108" height="20" rx="6" fill="rgba(255,255,255,0.07)" stroke="rgba(255,255,255,0.09)" stroke-width="1"/>
+            <text x="214" y="211" font-family="JetBrains Mono,monospace" font-size="8.5" fill="rgba(255,255,255,0.32)" text-anchor="middle">OpenAI · Cohere · BYO</text>
+            <!-- step badge -->
+            <circle cx="135" cy="98" r="12" fill="#e8623b" filter="url(#fsh-sm)"/>
+            <text x="135" y="102" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="#fff" text-anchor="middle">1</text>
+
+            <!-- ══ NODE: S3 Vectors (hero) ═══════════════════════ -->
+            <rect x="348" y="42" width="258" height="200" rx="14" fill="url(#s3-grad)" filter="url(#fsh-coral)"/>
+            <!-- glass highlight top band -->
+            <rect x="348" y="42" width="258" height="80" rx="14" fill="rgba(255,255,255,0.11)" clip-path="url(#cp-s3)"/>
+            <!-- inner ring -->
+            <rect x="350" y="44" width="254" height="196" rx="12" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+            <!-- storage cylinder icon -->
+            <g transform="translate(477,107)">
+              <!-- cylinder body -->
+              <rect x="-22" y="0" width="44" height="20" fill="rgba(255,255,255,0.13)"/>
+              <!-- top ellipse (brightest) -->
+              <ellipse cy="0" rx="22" ry="7" fill="rgba(255,255,255,0.38)"/>
+              <!-- side edges -->
+              <line x1="-22" y1="0" x2="-22" y2="20" stroke="rgba(255,255,255,0.22)" stroke-width="1.2"/>
+              <line x1="22"  y1="0" x2="22"  y2="20" stroke="rgba(255,255,255,0.22)" stroke-width="1.2"/>
+              <!-- bottom ellipse -->
+              <ellipse cy="20" rx="22" ry="7" fill="rgba(255,255,255,0.18)"/>
+              <!-- floating vector dots above cylinder -->
+              <circle cx="-14" cy="-20" r="3"   fill="rgba(255,255,255,0.92)"/>
+              <circle cx="0"   cy="-25" r="2.5" fill="rgba(255,255,255,0.78)"/>
+              <circle cx="14"  cy="-19" r="3"   fill="rgba(255,255,255,0.88)"/>
+              <circle cx="-23" cy="-13" r="2"   fill="rgba(255,255,255,0.55)"/>
+              <circle cx="23"  cy="-14" r="2"   fill="rgba(255,255,255,0.55)"/>
+              <!-- dashed lines from dots to cylinder top -->
+              <line x1="-14" y1="-17" x2="-11" y2="-7" stroke="rgba(255,255,255,0.28)" stroke-width="1" stroke-dasharray="2 2"/>
+              <line x1="0"   y1="-22.5" x2="0" y2="-7" stroke="rgba(255,255,255,0.28)" stroke-width="1" stroke-dasharray="2 2"/>
+              <line x1="14"  y1="-16" x2="11"  y2="-7" stroke="rgba(255,255,255,0.28)" stroke-width="1" stroke-dasharray="2 2"/>
+            </g>
+            <text x="477" y="150" font-family="Inter,sans-serif" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="-0.4">S3 Vectors</text>
+            <text x="477" y="170" font-family="JetBrains Mono,monospace" font-size="10.5" fill="rgba(255,255,255,0.78)" text-anchor="middle">ANN · nearest keys</text>
+            <!-- stat pills -->
+            <rect x="357" y="182" width="106" height="20" rx="6" fill="rgba(0,0,0,0.2)"/>
+            <text x="410" y="196" font-family="JetBrains Mono,monospace" font-size="9" fill="rgba(255,255,255,0.78)" text-anchor="middle">90%+ recall</text>
+            <rect x="475" y="182" width="122" height="20" rx="6" fill="rgba(0,0,0,0.2)"/>
+            <text x="536" y="196" font-family="JetBrains Mono,monospace" font-size="9" fill="rgba(255,255,255,0.78)" text-anchor="middle">billions of vectors</text>
+            <!-- AWS stamp -->
+            <rect x="414" y="212" width="126" height="18" rx="5" fill="rgba(0,0,0,0.26)"/>
+            <text x="477" y="225" font-family="JetBrains Mono,monospace" font-size="8.5" fill="rgba(255,255,255,0.5)" text-anchor="middle" letter-spacing="0.04em">AMAZON AWS MANAGED</text>
+            <!-- step badge -->
+            <circle cx="348" cy="42" r="12" fill="rgba(255,255,255,0.92)" filter="url(#fsh-sm)"/>
+            <text x="348" y="46" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="#e8623b" text-anchor="middle">2</text>
+
+            <!-- ══ NODE: DynamoDB (dark glass) ═══════════════════ -->
+            <rect x="348" y="268" width="258" height="92" rx="13" fill="url(#dyn-grad)" stroke="rgba(255,255,255,0.09)" stroke-width="1" filter="url(#fsh-card)"/>
+            <!-- glass highlight -->
+            <rect x="348" y="268" width="258" height="38" rx="13" fill="rgba(255,255,255,0.05)" clip-path="url(#cp-dyn)"/>
+            <!-- lightning bolt icon -->
+            <g transform="translate(389,314)">
+              <path d="M5,-15 L-5,2 L1,2 L-5,15 L12,-2 L5,-2 Z" fill="rgba(255,255,255,0.75)"/>
+            </g>
+            <text x="477" y="302" font-family="Inter,sans-serif" font-size="14" font-weight="800" fill="rgba(255,255,255,0.95)" text-anchor="middle" letter-spacing="-0.3">DynamoDB</text>
+            <text x="477" y="321" font-family="JetBrains Mono,monospace" font-size="10" fill="rgba(255,255,255,0.4)" text-anchor="middle">BatchGetItem · documents</text>
+            <rect x="412" y="330" width="130" height="18" rx="5" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+            <text x="477" y="343" font-family="JetBrains Mono,monospace" font-size="8.5" fill="rgba(255,255,255,0.3)" text-anchor="middle">single-digit ms hydration</text>
+            <!-- step badge -->
+            <circle cx="348" cy="268" r="12" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.28)" stroke-width="1"/>
+            <text x="348" y="272" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="rgba(255,255,255,0.9)" text-anchor="middle">3</text>
+
+            <!-- ══ NODE: Graph / ER (optional, dashed) ═══════════ -->
+            <rect x="18" y="268" width="192" height="92" rx="12" fill="rgba(232,98,59,0.07)" stroke="#e8623b" stroke-width="1.5" stroke-dasharray="6 3"/>
+            <!-- graph / network icon -->
+            <g transform="translate(60,314)">
+              <line x1="-10" y1="-6" x2="7"   y2="-11" stroke="rgba(232,98,59,0.5)" stroke-width="1.5"/>
+              <line x1="9"   y1="-9" x2="13"  y2="5"   stroke="rgba(232,98,59,0.4)" stroke-width="1.5"/>
+              <line x1="-10" y1="-2" x2="-7"  y2="9"   stroke="rgba(232,98,59,0.4)" stroke-width="1.5"/>
+              <line x1="-5"  y1="11" x2="11"  y2="9"   stroke="rgba(232,98,59,0.35)" stroke-width="1.5"/>
+              <circle cx="-12" cy="-5" r="5.5" fill="rgba(232,98,59,0.25)" stroke="rgba(232,98,59,0.72)" stroke-width="1.5"/>
+              <circle cx="9"   cy="-11" r="4.5" fill="rgba(232,98,59,0.18)" stroke="rgba(232,98,59,0.55)" stroke-width="1.5"/>
+              <circle cx="14"  cy="7"   r="4.5" fill="rgba(232,98,59,0.18)" stroke="rgba(232,98,59,0.55)" stroke-width="1.5"/>
+              <circle cx="-7"  cy="11"  r="4.5" fill="rgba(232,98,59,0.18)" stroke="rgba(232,98,59,0.55)" stroke-width="1.5"/>
+            </g>
+            <text x="130" y="305" font-family="Inter,sans-serif" font-size="12" font-weight="700" fill="rgba(232,98,59,0.9)" text-anchor="middle">Graph / ER</text>
+            <text x="130" y="323" font-family="JetBrains Mono,monospace" font-size="9" fill="rgba(232,98,59,0.6)" text-anchor="middle">optional layer</text>
+            <rect x="72" y="332" width="116" height="18" rx="5" fill="rgba(232,98,59,0.08)"/>
+            <text x="130" y="345" font-family="JetBrains Mono,monospace" font-size="8" fill="rgba(232,98,59,0.5)" text-anchor="middle">KG · adjacency lists</text>
+
+            <!-- ══ NODE: Results ═════════════════════════════════ -->
+            <rect x="658" y="258" width="252" height="110" rx="13" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.13)" stroke-width="1.5" filter="url(#fsh-card)"/>
+            <!-- glass highlight -->
+            <rect x="658" y="258" width="252" height="46" rx="13" fill="url(#glass-hi)" clip-path="url(#cp-res)"/>
+            <!-- ranked-list icon with medal -->
+            <g transform="translate(694,308)">
+              <circle cx="0" cy="-14" r="9" fill="rgba(232,98,59,0.2)" stroke="rgba(232,98,59,0.65)" stroke-width="1.5"/>
+              <text x="0" y="-10" font-family="Inter,sans-serif" font-size="10" font-weight="700" fill="rgba(232,98,59,1)" text-anchor="middle">&#10003;</text>
+              <rect x="-13" y="-1" width="26" height="4.5" rx="2.2" fill="rgba(255,255,255,0.55)"/>
+              <rect x="-13" y="8"  width="19" height="4.5" rx="2.2" fill="rgba(255,255,255,0.35)"/>
+              <rect x="-13" y="17" width="11" height="4.5" rx="2.2" fill="rgba(255,255,255,0.2)"/>
+            </g>
+            <text x="784" y="292" font-family="Inter,sans-serif" font-size="13" font-weight="700" fill="rgba(255,255,255,0.92)" text-anchor="middle">rerank · results</text>
+            <text x="784" y="311" font-family="JetBrains Mono,monospace" font-size="9.5" fill="rgba(255,255,255,0.38)" text-anchor="middle">scored documents</text>
+            <rect x="736" y="323" width="96" height="20" rx="6" fill="rgba(232,98,59,0.15)" stroke="rgba(232,98,59,0.3)" stroke-width="1"/>
+            <text x="784" y="337" font-family="JetBrains Mono,monospace" font-size="9" fill="rgba(232,98,59,0.85)" text-anchor="middle">MMR · RRF · BM25</text>
+            <!-- step badge -->
+            <circle cx="658" cy="258" r="12" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.22)" stroke-width="1"/>
+            <text x="658" y="262" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="rgba(255,255,255,0.88)" text-anchor="middle">4</text>
+          </svg>
+        </div>
+
+        <div class="grid grid--2 arch__notes">
+          <div>
+            <h3 class="tick">S3 Vectors — the scale tier</h3>
+            <p>Holds the vector plus a small filterable metadata subset. AWS-managed approximate-nearest-neighbor over billions of vectors. Cosine or euclidean natively; cosine / dot / euclidean / manhattan (and weighted combinations) available as client-side rescoring.</p>
+          </div>
+          <div>
+            <h3 class="tick">DynamoDB — the speed &amp; meaning tier</h3>
+            <p>Canonical store for full text and rich metadata, hydrated by key in single-digit ms. Also holds the knowledge-graph adjacency lists that connect entities to embeddings, so you can traverse structure first and narrow the vector search.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ BENCHMARKS ============ -->
+    <section class="section" id="benchmarks">
+      <div class="wrap">
+        <h2 class="section__title" data-reveal>Benchmarks</h2>
+        <p class="section__lede">
+          Cost across every common embedding dimension (384–3072) and 100K → 1&nbsp;billion vectors.
+          dynavec stays lowest at every point because its storage is priced like S3, not RAM.
+        </p>
+
+        <figure class="fig fig--chart">
+          <div class="chart-wrap" style="position:relative;height:320px">
+            <canvas id="bench-matrix"></canvas>
+          </div>
+          <figcaption>Monthly cost by scale &amp; dimension · 1536-dim · 1M queries/mo. dynavec (coral) is the lowest at every scale.</figcaption>
+        </figure>
+
+        <div class="grid grid--3-bench">
+          <figure class="fig fig--chart">
+            <div class="chart-wrap" style="position:relative;height:260px">
+              <canvas id="bench-scale"></canvas>
+            </div>
+            <figcaption>Cost by scale (768-d, 1M queries/mo) — log-log scale.</figcaption>
+          </figure>
+          <figure class="fig fig--chart">
+            <div class="chart-wrap" style="position:relative;height:260px">
+              <canvas id="bench-storage"></canvas>
+            </div>
+            <figcaption>Raw float32 footprint — up to ~5.7&nbsp;TiB at 1B × 1536-d.</figcaption>
+          </figure>
+          <figure class="fig fig--donut">
+            <div class="chart-wrap" style="position:relative;height:260px">
+              <canvas id="quality-chart"></canvas>
+            </div>
+            <figcaption>Recall ÷ Latency score — higher recall at lower query latency. Representative estimates; run <code>python -m benchmarks.report</code> to reproduce.</figcaption>
+          </figure>
+        </div>
+
+        <h3 class="table__title">1536-dim (e.g. OpenAI <code>text-embedding-3-small</code>) — $/month @ 1M queries/mo</h3>
+        <div class="table__scroll">
+          <table class="table">
+            <thead>
+              <tr><th>Product</th><th>100K</th><th>1M</th><th>10M</th><th>100M</th><th>1B</th></tr>
+            </thead>
+            <tbody>
+              <tr class="is-best"><td>dynavec</td><td>$3</td><td>$3</td><td>$8</td><td>$50</td><td>$469</td></tr>
+              <tr><td>Pinecone</td><td>$9</td><td>$10</td><td>$27</td><td>$197</td><td>$1,897</td></tr>
+              <tr><td>OpenSearch</td><td>$701</td><td>$701</td><td>$877</td><td>$8,423</td><td>$83,708</td></tr>
+              <tr><td>Qdrant</td><td>$160</td><td>$160</td><td>$960</td><td>$8,640</td><td>$85,920</td></tr>
+              <tr><td>Weaviate</td><td>$175</td><td>$175</td><td>$1,050</td><td>$9,450</td><td>$93,975</td></tr>
+              <tr><td>Milvus/Zilliz</td><td>$150</td><td>$150</td><td>$900</td><td>$8,100</td><td>$80,550</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+
+        <!-- ── Cost Calculator ── -->
+        <div class="calc2" id="cost-calculator">
+          <div class="calc2__header">
+            <h3 class="calc2__title">Estimate your cost</h3>
+            <div class="calc2__presets">
+              <button class="calc2__preset is-active" data-preset="starter">Starter</button>
+              <button class="calc2__preset" data-preset="growth">Growth</button>
+              <button class="calc2__preset" data-preset="scale">Scale</button>
+            </div>
+          </div>
+
+          <div class="calc2__body">
+            <!-- Sliders -->
+            <div class="calc2__sliders">
+              <div class="calc2__row">
+                <div class="calc2__row-label">
+                  <span>Vectors stored</span>
+                  <span class="calc2__val" id="lbl-vectors">1 M</span>
+                </div>
+                <input class="calc2__slider" type="range" id="sl-vectors" min="0" max="7" step="0.01" value="6" />
+              </div>
+              <div class="calc2__row">
+                <div class="calc2__row-label">
+                  <span>Dimensions</span>
+                  <span class="calc2__val" id="lbl-dim">768</span>
+                </div>
+                <input class="calc2__slider" type="range" id="sl-dim" min="0" max="3" step="1" value="1" />
+              </div>
+              <div class="calc2__row">
+                <div class="calc2__row-label">
+                  <span>Queries / month</span>
+                  <span class="calc2__val" id="lbl-qpm">1 M</span>
+                </div>
+                <input class="calc2__slider" type="range" id="sl-qpm" min="0" max="8" step="0.01" value="6" />
+              </div>
+              <div class="calc2__row">
+                <div class="calc2__row-label">
+                  <span>Writes / month</span>
+                  <span class="calc2__val" id="lbl-wpm">100 K</span>
+                </div>
+                <input class="calc2__slider" type="range" id="sl-wpm" min="0" max="7" step="0.01" value="5" />
+              </div>
+            </div>
+
+            <!-- Results -->
+            <div class="calc2__results">
+              <div class="calc2__totals">
+                <div class="calc2__brand-total">
+                  <div class="calc2__brand-logo">dv</div>
+                  <div>
+                    <div class="calc2__price" id="calc-dv-price">$0.00</div>
+                    <div class="calc2__price-label">dynavec / mo</div>
+                  </div>
+                </div>
+                <div class="calc2__vs">vs</div>
+                <div class="calc2__brand-total calc2__brand-total--alt">
+                  <div class="calc2__brand-logo calc2__brand-logo--alt">Pn</div>
+                  <div>
+                    <div class="calc2__price calc2__price--alt" id="calc-pn-price">$0.00</div>
+                    <div class="calc2__price-label">Pinecone est. / mo</div>
+                  </div>
+                </div>
+              </div>
+              <div class="calc2__savings" id="calc-savings">You save ~0%</div>
+
+              <div class="calc2__bars" id="calc-bars">
+                <div class="calc2__bar-row">
+                  <span class="calc2__bar-label">S3 storage</span>
+                  <div class="calc2__bar-track"><div class="calc2__bar-fill" id="bar-storage"></div></div>
+                  <span class="calc2__bar-amt" id="amt-storage">$0.00</span>
+                </div>
+                <div class="calc2__bar-row">
+                  <span class="calc2__bar-label">S3 reads</span>
+                  <div class="calc2__bar-track"><div class="calc2__bar-fill" id="bar-reads"></div></div>
+                  <span class="calc2__bar-amt" id="amt-reads">$0.00</span>
+                </div>
+                <div class="calc2__bar-row">
+                  <span class="calc2__bar-label">DDB reads</span>
+                  <div class="calc2__bar-track"><div class="calc2__bar-fill" id="bar-ddb-r"></div></div>
+                  <span class="calc2__bar-amt" id="amt-ddb-r">$0.00</span>
+                </div>
+                <div class="calc2__bar-row">
+                  <span class="calc2__bar-label">DDB writes</span>
+                  <div class="calc2__bar-track"><div class="calc2__bar-fill" id="bar-ddb-w"></div></div>
+                  <span class="calc2__bar-amt" id="amt-ddb-w">$0.00</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="calc2__note">Estimates based on public AWS list prices · verify before quoting</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ DOCS / QUICKSTART ============ -->
+    <!-- ============ QUICK START ============ -->
+    <section class="section" id="quickstart">
+      <div class="wrap">
+        <h2 class="section__title" data-reveal>Quick start</h2>
+        <p class="section__lede">Three steps to your first semantic search — everything runs inside your own AWS account.</p>
+
+        <div class="grid grid--3">
+          <div class="card">
+            <span class="card__no">01</span>
+            <h3>Install</h3>
+            <p>Python 3.9+. Base install is just <code>boto3</code> + <code>numpy</code>; add an embedder extra when you want dynavec to embed for you.</p>
+            <pre class="code code--sm"><code>pip install dynavec
+# or: uv add dynavec
+pip install "dynavec[openai]"</code></pre>
+          </div>
+
+          <div class="card">
+            <span class="card__no">02</span>
+            <h3>Grant AWS access</h3>
+            <p>Create an IAM user with permission for <strong>S3 Vectors</strong> + <strong>DynamoDB</strong>, then export its keys. Full least-privilege policy in the <a href="docs/credentials.html">Credentials &amp; IAM</a> guide.</p>
+            <pre class="code code--sm"><code>export AWS_ACCESS_KEY_ID=...
+export AWS_SECRET_ACCESS_KEY=...
+export AWS_DEFAULT_REGION=us-east-1</code></pre>
+          </div>
+
+          <div class="card">
+            <span class="card__no">03</span>
+            <h3>Run your first query</h3>
+            <p>Point dynavec at a bucket, index, and table. With <code>auto_provision=True</code> it creates them for you on first use.</p>
+            <pre class="code code--sm"><code>db.upsert([Document(id="a",
+    text="Mitochondria power the cell.")])
+db.search("how do cells make energy?")</code></pre>
+          </div>
+        </div>
+
+        <p class="section__lede">Full runnable snippet ↓ or read the <a href="docs/quickstart.html">Quickstart guide</a>.</p>
+      </div>
+    </section>
+
+    <section class="section section--alt" id="docs">
+      <div class="wrap">
+        <h2 class="section__title" data-reveal>Pythonic by design</h2>
+        <p class="section__lede">Clean, explicit, and framework-friendly. Bring your own embedder and API key, or your own vectors.</p>
+
+        <div class="tabs" data-tabs>
+          <div class="tabs__list" role="tablist" aria-label="Examples">
+            <button class="tab is-active" role="tab" aria-selected="true" data-tab="t-start">Quickstart</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="t-search">Search &amp; rerank</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="t-ns">Namespaces</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="t-graph">Knowledge graph</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="t-cache">Caching</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="t-lc">LangChain</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="t-mcp">MCP ingest</button>
+          </div>
+
+          <div class="tabs__panels">
+            <pre class="code" id="t-start" role="tabpanel"><code>from dynavec import Dynavec, DynavecConfig, Document
+from dynavec.embeddings import OpenAIEmbedder
+
+cfg = DynavecConfig(
+    vector_bucket="my-vectors",
+    index="docs",
+    table="dynavec_docs",
+    dimension=1536,
+    region="us-east-1",
+    auto_provision=True,        # creates bucket + index + table
+)
+db = Dynavec(cfg, embedder=OpenAIEmbedder(model="text-embedding-3-small"))
+
+db.upsert([
+    Document(id="a", text="Mitochondria power the cell.", metadata={"topic": "bio"}),
+    Document(id="b", text="Rockets reach orbit at ~28,000 km/h.", metadata={"topic": "space"}),
+], auto_metadata=True)
+
+for hit in db.search("how do cells make energy?", top_k=3):
+    print(hit.score, hit.id, hit.text)</code></pre>
+
+            <pre class="code is-hidden" id="t-search" role="tabpanel"><code># metadata pre-filter + client-side metric rescoring + MMR diversity
+hits = db.search(
+    "fast serverless storage on AWS",
+    top_k=5,
+    filter={"topic": "aws"},
+    rescore={"cosine": 0.7, "manhattan": 0.3},   # weighted combination
+    rerank="mmr",
+)
+
+# bring your own vector (no embedder required)
+hits = db.search(vector=my_1536d_vector, top_k=10)</code></pre>
+
+            <pre class="code is-hidden" id="t-ns" role="tabpanel"><code># one index, many tenants — clean isolation + even partitioning
+kb = db.namespace("tenant-42")
+kb.upsert([Document(id="1", text="private doc")])
+kb.search("query scoped to this tenant only", top_k=4)
+
+# stream results to an agent as pages arrive
+for hit in db.search_stream("large query", top_k=100):
+    handle(hit)</code></pre>
+
+            <pre class="code is-hidden" id="t-graph" role="tabpanel"><code># attach meaning: entities, relations, and links to documents
+db.graph_add_edge("acme", "competes_with", "globex", namespace="kb")
+db.graph_link("acme", ["doc-1", "doc-2"], namespace="kb")
+
+# GraphRAG: traverse structure first, then rank only related docs
+hits = db.graph_search(
+    "recent product launches",
+    seed_entities=["acme"],
+    hops=2,
+    top_k=10,
+)</code></pre>
+
+            <pre class="code is-hidden" id="t-cache" role="tabpanel"><code>from dynavec import Dynavec, SemanticCache, DynamoDBCache
+
+# serve near-duplicate queries from memory (no vector search)
+db = Dynavec(cfg, embedder=embedder, cache=SemanticCache(threshold=0.97))
+
+# or a shared, durable cache in your own DynamoDB table (TTL expiry)
+db = Dynavec(cfg, embedder=embedder, cache=DynamoDBCache(cfg))
+# RedisCache(...) targets AWS ElastiCache for sub-millisecond shared cache</code></pre>
+
+            <pre class="code is-hidden" id="t-lc" role="tabpanel"><code>from dynavec.integrations.langchain import DynavecVectorStore
+
+store = DynavecVectorStore(db, namespace="kb")
+retriever = store.as_retriever(search_kwargs={"k": 4})
+
+# framework-agnostic tool for LangGraph / CrewAI / Strands
+from dynavec.integrations.tools import make_retriever_fn
+retrieve = make_retriever_fn(db, top_k=4)   # fn(query: str) -> str</code></pre>
+
+            <pre class="code is-hidden" id="t-mcp" role="tabpanel"><code>from dynavec.ingest import ingest, MCPResourceSource
+
+# turn ANY MCP server (Notion, Confluence, Drive, ...) into a corpus:
+# chunk, embed, and upsert its resources in one call
+ingest(db, MCPResourceSource(mcp_session), namespace="kb")</code></pre>
+          </div>
+        </div>
+
+        <div class="features">
+          <h3 class="features__title">Everything in the box</h3>
+          <ul class="features__grid">
+            <li>Cosine · dot · euclidean · manhattan · weighted combos</li>
+            <li>GIL-aware thread concurrency for I/O-bound calls</li>
+            <li>Streaming, page-by-page result delivery</li>
+            <li>Namespace RAG &amp; multi-tenancy</li>
+            <li>Product quantization for compact caching</li>
+            <li>Knowledge graph / entity-relationship traversal</li>
+            <li>Semantic · DynamoDB-TTL · Redis/ElastiCache caching</li>
+            <li>Update + in-account AWS Lambda transforms</li>
+            <li>IAM keys · profiles · cross-account assume-role</li>
+            <li>MCP ingestion from external sources</li>
+            <li>LangChain · LlamaIndex · LangGraph · CrewAI · Strands</li>
+            <li>Pluggable embedders: OpenAI · Gemini · Cohere · Bedrock · local</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CONTRIBUTE ============ -->
+    <section class="section" id="contribute">
+      <div class="wrap">
+        <h2 class="section__title" data-reveal>Contribute</h2>
+        <p class="section__lede">dynavec is Apache-2.0 and community-built. Issues, PRs, and ideas are welcome.</p>
+
+        <div class="grid grid--3">
+          <article class="card">
+            <span class="card__no">→</span>
+            <h3>Get set up</h3>
+            <pre class="code code--sm"><code>git clone https://github.com/\
+codeforstartups/dynavec
+cd dynavec
+uv pip install -e ".[dev]"
+pytest -q</code></pre>
+          </article>
+          <article class="card">
+            <span class="card__no">→</span>
+            <h3>Good first issues</h3>
+            <p>Async client, an hnswlib hot tier, sort-key graph adjacency, file-parser ingestion sources, and a live-AWS test matrix are all open on the roadmap.</p>
+            <a class="link" href="https://github.com/codeforstartups/dynavec/issues" target="_blank" rel="noopener">Browse issues →</a>
+          </article>
+          <article class="card">
+            <span class="card__no">→</span>
+            <h3>Star &amp; share</h3>
+            <p>Stars help other developers find dynavec. If it saves you money or keeps your data in-account, let people know.</p>
+            <a class="link" href="https://github.com/codeforstartups/dynavec" target="_blank" rel="noopener">Star on GitHub (<span data-stars>—</span>) →</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CONTRIBUTORS ============ -->
+    <section class="section contributors-section" id="contributors">
+      <div class="wrap">
+        <h2 class="section__title" data-reveal>Built by the community</h2>
+        <p class="section__lede">Every commit, fix, and idea counts. Meet the people who make dynavec better.</p>
+
+        <p class="contrib-group-label">Core contributors</p>
+        <div class="contrib-grid contrib-grid--core" id="contrib-core"><!-- injected by JS --></div>
+
+        <p class="contrib-group-label" style="margin-top:48px">All contributors</p>
+        <div class="contrib-grid" id="contrib-all"><!-- injected by JS --></div>
+
+        <div style="margin-top:40px;text-align:center">
+          <a class="btn btn--ghost" href="https://github.com/codeforstartups/dynavec/graphs/contributors" target="_blank" rel="noopener">View all contributors →</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer">
+    <div class="wrap footer__inner">
+      <div>
+        <span class="brand__name">dynavec</span>
+        <p class="footer__tag">Serverless hybrid vector database · DynamoDB + Amazon S3 Vectors</p>
+      </div>
+      <nav class="footer__links" aria-label="Footer">
+        <a href="/?tab=playground" target="_top">Console</a>
+        <a href="https://github.com/codeforstartups/dynavec" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/codeforstartups/dynavec#readme" target="_blank" rel="noopener">README</a>
+        <a href="https://github.com/codeforstartups/dynavec/blob/development/ARCHITECTURE.md" target="_blank" rel="noopener">Architecture</a>
+        <a href="https://github.com/codeforstartups/dynavec/issues" target="_blank" rel="noopener">Issues</a>
+      </nav>
+      <p class="footer__legal">Apache-2.0 · *cost figures are cost-model estimates from public list prices.</p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

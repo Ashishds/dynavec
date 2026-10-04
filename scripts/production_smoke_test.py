@@ -35,7 +35,7 @@ from dynavec.embeddings.base import Embedder
 from dynavec.eval import EvalDataset, EvalQuery, run_eval
 from dynavec.telemetry import TelemetryRecorder
 
-DIM = 16
+DIM = 384
 
 
 class LocalDeterministicEmbedder(Embedder):
