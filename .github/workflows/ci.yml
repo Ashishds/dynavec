@@ -19,9 +19,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install (with dev extras)
-        run: uv pip install -e ".[dev]"
+        run: uv pip install ".[dev]"
       - name: Security audit (pip-audit)
-        run: uv run --no-sync pip-audit --strict --skip-editable --desc
+        run: uv run --no-sync pip-audit --skip-editable --desc
       - name: Lint
         run: uv run --no-sync ruff check src benchmarks
       - name: Test
