@@ -32,12 +32,14 @@ jobs:
           cache-dependency-path: dashboard/package-lock.json
 
       - name: Install Dashboard Dependencies
-        run: npm --prefix dashboard ci
+        working-directory: dashboard
+        run: npm ci
 
       - name: Build Static Dashboard
+        working-directory: dashboard
         run: |
           export NEXT_PUBLIC_BASE_PATH="/dynavec/dashboard"
-          npm --prefix dashboard run build
+          npm run build
 
       - name: Assemble Static Site
         run: |
@@ -46,7 +48,9 @@ jobs:
           cp -r opensource/dynavec/* _site/
           # Copy static dashboard export under /dashboard subpath
           mkdir -p _site/dashboard
-          cp -r dashboard/out/* _site/dashboard/
+          cp -r dashboard/out/. _site/dashboard/
+          # Ensure GitHub Pages serves Next.js _next directories
+          touch _site/.nojekyll
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
