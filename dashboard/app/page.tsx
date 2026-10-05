@@ -88,7 +88,7 @@ export default function Page() {
   }
 
   return (
-    <>
+    <div className="flex flex-col h-screen overflow-hidden">
       <TopBar
         window={win}
         onWindow={setWin}
@@ -98,9 +98,9 @@ export default function Page() {
         hideControls={view === "playground" || view === "canvas"}
         onHome={() => handleViewChange("landing")}
       />
-      <div className="flex min-h-[calc(100vh-52px)]">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         <Sidebar view={view} onView={handleViewChange} />
-        <main className={`flex-1 min-w-0 ${view === "canvas" ? "p-0" : "p-6"}`}>
+        <main className={`flex-1 min-w-0 h-full ${view === "canvas" ? "p-0 overflow-hidden" : "p-6 overflow-y-auto"}`}>
           {view === "canvas" && (
             <AgentCanvas
               initialTemplateId={activeTemplateId}
@@ -195,6 +195,6 @@ export default function Page() {
           handleViewChange("canvas");
         }}
       />
-    </>
+    </div>
   );
 }

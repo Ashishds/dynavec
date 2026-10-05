@@ -344,7 +344,7 @@ export default function AgentCanvas({
   const pythonCode = generatePythonCode(activeWorkflowName, nodes, edges);
 
   return (
-    <div className="relative w-full h-[calc(100vh-52px)] flex flex-col overflow-hidden bg-bg">
+    <div className="relative w-full h-full flex flex-col overflow-hidden bg-bg">
       {/* Top Studio Control Bar */}
       <div className="h-14 border-b border-line bg-surface/90 backdrop-blur px-4 flex items-center justify-between z-20 shrink-0">
         {/* Left: Workflow title & selector */}

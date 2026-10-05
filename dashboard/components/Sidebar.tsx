@@ -101,7 +101,7 @@ const ICONS: Record<string, React.ReactNode> = {
 export default function Sidebar({ view, onView }: { view: string; onView: (v: string) => void }) {
   return (
     <nav
-      className="w-[230px] shrink-0 border-r border-line p-3 hidden md:block sticky top-[52px] h-[calc(100vh-52px)] self-start overflow-y-auto"
+      className="w-[230px] shrink-0 border-r border-line p-3 hidden md:block h-full overflow-y-auto select-none"
       style={{ background: "var(--color-surface)" }}
     >
       {GROUPS.map((g) => (

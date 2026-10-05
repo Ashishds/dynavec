@@ -93,12 +93,16 @@ html.dark {
   --nav-blur-border: rgba(232, 98, 59, 0.10);
 }
 
-html, body { padding: 0; margin: 0; }
+html, body {
+  padding: 0;
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
 body {
   background: var(--color-bg);
   color: var(--color-ink);
   font-family: theme('fontFamily.sans');
-  border-top: 3px solid var(--color-accent);
   -webkit-font-smoothing: antialiased;
 }
 ::-webkit-scrollbar { width: 10px; height: 10px; }

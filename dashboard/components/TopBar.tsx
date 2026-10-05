@@ -22,7 +22,7 @@ export default function TopBar({
 }) {
   return (
     <header
-      className="h-[52px] flex items-center gap-4 px-5 sticky top-0 z-10"
+      className="h-[52px] flex items-center gap-4 px-5 shrink-0 z-10 select-none"
       style={{
         background: "var(--nav-blur-bg)",
         backdropFilter: "blur(20px) saturate(180%)",
