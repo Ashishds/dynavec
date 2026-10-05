@@ -98,12 +98,52 @@ const ICONS: Record<string, React.ReactNode> = {
   ),
 };
 
-export default function Sidebar({ view, onView }: { view: string; onView: (v: string) => void }) {
+export default function Sidebar({
+  view,
+  onView,
+  isMobileDrawer = false,
+  onCloseMobile,
+}: {
+  view: string;
+  onView: (v: string) => void;
+  isMobileDrawer?: boolean;
+  onCloseMobile?: () => void;
+}) {
+  const handleItemClick = (id: string) => {
+    onView(id);
+    if (onCloseMobile) onCloseMobile();
+  };
+
   return (
     <nav
-      className="w-[230px] shrink-0 border-r border-line p-3 hidden md:block h-full overflow-y-auto select-none"
+      className={
+        isMobileDrawer
+          ? "w-[280px] max-w-[85vw] p-4 h-full overflow-y-auto select-none flex flex-col"
+          : "w-[230px] shrink-0 border-r border-line p-3 hidden md:block h-full overflow-y-auto select-none"
+      }
       style={{ background: "var(--color-surface)" }}
     >
+      {isMobileDrawer && (
+        <div className="flex items-center justify-between pb-3 mb-3 border-b border-line">
+          <div className="flex items-center gap-2 font-mono font-bold text-sm text-ink">
+            <span className="w-2 h-2 rounded-full bg-accent" />
+            <span>Console Menu</span>
+          </div>
+          {onCloseMobile && (
+            <button
+              type="button"
+              onClick={onCloseMobile}
+              className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-line/40 transition-colors cursor-pointer"
+              aria-label="Close navigation drawer"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
+
       {GROUPS.map((g) => (
         <div key={g.title} className="mb-4">
           <h4 className="font-mono text-[10.5px] uppercase tracking-wider text-faint mb-1.5 px-2.5">
@@ -113,9 +153,9 @@ export default function Sidebar({ view, onView }: { view: string; onView: (v: st
             <button
               type="button"
               key={it.label}
-              onClick={() => it.id && onView(it.id)}
+              onClick={() => it.id && handleItemClick(it.id)}
               className={
-                "w-full text-left flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[13px] mb-0.5 transition-all cursor-pointer " +
+                "w-full text-left flex items-center gap-2.5 px-2.5 py-2.5 md:py-1.5 rounded-lg text-[13.5px] md:text-[13px] mb-0.5 transition-all cursor-pointer " +
                 (it.id && view === it.id
                   ? "bg-accent-soft text-accent-ink font-semibold shadow-xs"
                   : it.soon

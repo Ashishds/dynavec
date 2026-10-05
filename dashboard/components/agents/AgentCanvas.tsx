@@ -48,8 +48,14 @@ export default function AgentCanvas({
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [paletteOpen, setPaletteOpen] = useState(true);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [activeWorkflowName, setActiveWorkflowName] = useState(initialTemplate.name);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth >= 1024) {
+      setPaletteOpen(true);
+    }
+  }, []);
 
   // Modals & Panels
   const [isSimulating, setIsSimulating] = useState(false);
@@ -387,14 +393,14 @@ export default function AgentCanvas({
         </div>
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
           {/* Node Palette toggle for mobile */}
           <button
             type="button"
             onClick={() => setPaletteOpen(!paletteOpen)}
-            className="md:hidden py-1.5 px-2.5 rounded text-xs font-mono border border-line bg-bg text-ink"
+            className="md:hidden py-1.5 px-2.5 rounded text-xs font-mono border border-line bg-bg text-ink cursor-pointer shrink-0"
           >
-            Components
+            {paletteOpen ? "Close Palette" : "+ Nodes"}
           </button>
 
           <button
@@ -403,7 +409,7 @@ export default function AgentCanvas({
               setNodes((nds) => nds.map((n) => ({ ...n, data: { ...n.data, status: "idle" } })));
               reactFlowInstance?.fitView({ padding: 0.2 });
             }}
-            className="py-1.5 px-2.5 rounded text-xs font-mono border border-line bg-surface text-muted hover:text-ink hover:bg-bg transition-colors"
+            className="py-1.5 px-2.5 rounded text-xs font-mono border border-line bg-surface text-muted hover:text-ink hover:bg-bg transition-colors cursor-pointer shrink-0"
             title="Reset View & States"
           >
             Fit View
@@ -412,10 +418,10 @@ export default function AgentCanvas({
           <button
             type="button"
             onClick={() => setShowCodeModal(true)}
-            className="py-1.5 px-3 rounded text-xs font-mono font-medium border border-line bg-surface hover:bg-bg text-ink flex items-center gap-1.5 transition-colors"
+            className="py-1.5 px-2.5 sm:px-3 rounded text-xs font-mono font-medium border border-line bg-surface hover:bg-bg text-ink flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
           >
-            <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-accent-soft text-accent">PYTHON</span>
-            <span>Export Python</span>
+            <span className="font-mono text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded bg-accent-soft text-accent">PY</span>
+            <span><span className="hidden sm:inline">Export </span>Python</span>
           </button>
 
           <button
@@ -431,11 +437,11 @@ export default function AgentCanvas({
                 setShowWaterfall(true);
               }
             }}
-            className="py-1.5 px-3 rounded text-xs font-mono font-medium border border-line bg-surface hover:bg-bg text-ink flex items-center gap-1.5 transition-colors"
+            className="py-1.5 px-2.5 sm:px-3 rounded text-xs font-mono font-medium border border-line bg-surface hover:bg-bg text-ink flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
             title="Replay trace step-by-step on canvas"
           >
-            <span className="font-mono text-xs">&laquo; Step</span>
-            <span>{replayTrace ? (isReplaying ? "Pause" : "Resume Replay") : "Visual Replay"}</span>
+            <span className="font-mono text-xs">&laquo;</span>
+            <span>{replayTrace ? (isReplaying ? "Pause" : "Resume") : "Replay"}</span>
           </button>
 
           <button
@@ -445,17 +451,17 @@ export default function AgentCanvas({
               if (!simulationResult) handleRunSimulation();
             }}
             disabled={isSimulating}
-            className="py-1.5 px-4 rounded text-xs font-mono font-semibold bg-accent text-white hover:bg-accent/90 shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
+            className="py-1.5 px-3 sm:px-4 rounded text-xs font-mono font-semibold bg-accent text-white hover:bg-accent/90 shadow-sm flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0"
           >
             {isSimulating ? (
               <>
                 <span className="w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                <span>Executing...</span>
+                <span>Running...</span>
               </>
             ) : (
               <>
-                <span className="font-mono text-xs">&#9654; Run</span>
-                <span>Test Run</span>
+                <span className="font-mono text-xs">&#9654;</span>
+                <span>Run</span>
               </>
             )}
           </button>

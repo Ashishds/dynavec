@@ -48,12 +48,12 @@ export default function ResourcesPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold font-sans tracking-tight">S3 Vector Indexes &amp; Cloud Primitives</h2>
           <p className="text-sm text-muted">Provisioned AWS primitives managed by Terraform &amp; Dynavec</p>
         </div>
-        <span className="font-mono text-xs px-2.5 py-1 bg-ok/10 text-ok rounded-full border border-ok/30 flex items-center gap-1.5">
+        <span className="font-mono text-xs px-2.5 py-1 bg-ok/10 text-ok rounded-full border border-ok/30 flex items-center gap-1.5 self-start sm:self-auto">
           <span className="w-2 h-2 rounded-full bg-ok animate-pulse" /> All Systems Operational
         </span>
       </div>

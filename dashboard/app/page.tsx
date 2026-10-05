@@ -23,6 +23,7 @@ import TestSuitePanel from "@/components/agents/TestSuitePanel";
 
 export default function Page() {
   const [view, setView] = useState("landing");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [activeTemplateId, setActiveTemplateId] = useState<string | undefined>(undefined);
   const [traceToReplay, setTraceToReplay] = useState<TraceEvent | null>(null);
   const [win, setWin] = useState(3600);
@@ -74,6 +75,7 @@ export default function Page() {
 
   const handleViewChange = (v: string) => {
     setView(v);
+    setMobileNavOpen(false);
     if (typeof window !== "undefined") {
       if (v === "landing") {
         window.history.pushState(null, "", "/");
@@ -97,10 +99,11 @@ export default function Page() {
         live={isLive()}
         hideControls={view === "playground" || view === "canvas"}
         onHome={() => handleViewChange("landing")}
+        onToggleMobileMenu={() => setMobileNavOpen((o) => !o)}
       />
       <div className="flex flex-1 min-h-0 overflow-hidden">
         <Sidebar view={view} onView={handleViewChange} />
-        <main className={`flex-1 min-w-0 h-full ${view === "canvas" ? "p-0 overflow-hidden" : "p-6 overflow-y-auto"}`}>
+        <main className={`flex-1 min-w-0 h-full ${view === "canvas" ? "p-0 overflow-hidden" : "p-3.5 sm:p-6 pb-20 md:pb-6 overflow-y-auto"}`}>
           {view === "canvas" && (
             <AgentCanvas
               initialTemplateId={activeTemplateId}
@@ -195,6 +198,104 @@ export default function Page() {
           handleViewChange("canvas");
         }}
       />
+
+      {/* ── Mobile Slide-Over Drawer ── */}
+      {mobileNavOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex" role="dialog" aria-modal="true">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setMobileNavOpen(false)}
+          />
+          <div className="relative z-10 h-full shadow-2xl animate-in slide-in-from-left duration-200">
+            <Sidebar
+              view={view}
+              onView={(v) => {
+                handleViewChange(v);
+                setMobileNavOpen(false);
+              }}
+              isMobileDrawer={true}
+              onCloseMobile={() => setMobileNavOpen(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── Mobile Bottom Navigation Bar (Quick Access) ── */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 h-14 bg-surface/95 backdrop-blur-lg border-t border-line z-40 flex items-center justify-around px-1.5 select-none shadow-lg"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      >
+        <button
+          type="button"
+          onClick={() => handleViewChange("playground")}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${
+            view === "playground" ? "text-accent font-semibold" : "text-muted hover:text-ink"
+          }`}
+        >
+          <svg className="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <circle cx="11" cy="11" r="7" strokeWidth="1.8" />
+            <path strokeWidth="1.8" strokeLinecap="round" d="m20 20-3.5-3.5" />
+          </svg>
+          <span className="text-[10px] tracking-tight">Query</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleViewChange("canvas")}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${
+            view === "canvas" ? "text-accent font-semibold" : "text-muted hover:text-ink"
+          }`}
+        >
+          <svg className="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <rect x="3" y="3" width="7" height="7" rx="1.5" strokeWidth="1.8" />
+            <rect x="14" y="3" width="7" height="7" rx="1.5" strokeWidth="1.8" />
+            <rect x="14" y="14" width="7" height="7" rx="1.5" strokeWidth="1.8" />
+            <path strokeWidth="1.8" strokeLinecap="round" d="M10 6.5h4M6.5 10v7.5a1.5 1.5 0 0 0 1.5 1.5H14" />
+          </svg>
+          <span className="text-[10px] tracking-tight">Canvas</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleViewChange("workflows")}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${
+            view === "workflows" ? "text-accent font-semibold" : "text-muted hover:text-ink"
+          }`}
+        >
+          <svg className="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z" />
+            <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M14 10v4M10 14h8a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h4" />
+          </svg>
+          <span className="text-[10px] tracking-tight">Flows</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleViewChange("tracing")}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${
+            view === "tracing" ? "text-accent font-semibold" : "text-muted hover:text-ink"
+          }`}
+        >
+          <svg className="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h10M4 18h14" />
+            <circle cx="18" cy="12" r="2" strokeWidth="1.8" />
+          </svg>
+          <span className="text-[10px] tracking-tight">Traces</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMobileNavOpen(true)}
+          className="flex flex-col items-center justify-center flex-1 py-1 text-muted hover:text-ink transition-colors cursor-pointer"
+        >
+          <svg className="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <circle cx="5" cy="12" r="1.5" strokeWidth="1.8" />
+            <circle cx="12" cy="12" r="1.5" strokeWidth="1.8" />
+            <circle cx="19" cy="12" r="1.5" strokeWidth="1.8" />
+          </svg>
+          <span className="text-[10px] tracking-tight">More</span>
+        </button>
+      </nav>
     </div>
   );
 }

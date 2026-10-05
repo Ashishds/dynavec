@@ -29,12 +29,12 @@ export default function EvalTrends({ runs }: { runs: EvalRun[] }) {
   if (runs.length === 0) {
     return (
       <div className="space-y-6 max-w-6xl">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-bold font-sans tracking-tight text-ink">Retrieval Quality &amp; Accuracy Benchmarks</h2>
             <p className="text-sm text-muted">Offline accuracy evaluation measuring rank ordering, context precision, and target recall</p>
           </div>
-          <span className="font-mono text-xs px-2.5 py-1 bg-accent-soft text-accent-ink rounded-full border border-accent/20">
+          <span className="font-mono text-xs px-2.5 py-1 bg-accent-soft text-accent-ink rounded-full border border-accent/20 self-start sm:self-auto">
             Awaiting Benchmark Run
           </span>
         </div>

@@ -51,6 +51,31 @@
       <a class="btn btn--solid nav__console" href="dashboard/?tab=playground" target="_top">
         Console <span aria-hidden="true">&rarr;</span>
       </a>
+      <button class="nav__toggle" id="navToggle" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="navMobileMenu">
+        <span class="nav__toggle-bar"></span>
+        <span class="nav__toggle-bar"></span>
+        <span class="nav__toggle-bar"></span>
+      </button>
+    </div>
+    <!-- Mobile Navigation Dropdown -->
+    <div class="nav__mobile-menu" id="navMobileMenu" aria-hidden="true">
+      <nav class="nav__mobile-links">
+        <a href="#why" class="nav__mobile-link">Why</a>
+        <a href="#architecture" class="nav__mobile-link">Architecture</a>
+        <a href="#benchmarks" class="nav__mobile-link">Benchmarks &amp; Cost</a>
+        <a href="#quickstart" class="nav__mobile-link">Quick start</a>
+        <a href="docs/index.html" class="nav__mobile-link">Docs</a>
+        <a href="#contribute" class="nav__mobile-link">Contribute</a>
+      </nav>
+      <div class="nav__mobile-actions">
+        <a class="btn btn--solid nav__mobile-btn-console" href="dashboard/?tab=playground" target="_top">
+          Launch Console <span aria-hidden="true">&rarr;</span>
+        </a>
+        <a class="btn btn--ghost nav__mobile-star" href="https://github.com/Ashishds/dynavec" target="_blank" rel="noopener">
+          <span aria-hidden="true">★</span> Star on GitHub
+          <span class="star__count" data-stars>27</span>
+        </a>
+      </div>
     </div>
   </header>
 

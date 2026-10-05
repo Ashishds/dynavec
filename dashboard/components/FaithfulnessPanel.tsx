@@ -35,12 +35,12 @@ export default function FaithfulnessPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold font-sans tracking-tight">LLM-as-a-Judge Evaluation (RAG Quality)</h2>
           <p className="text-sm text-muted">Automated verification of groundedness, hallucination detection, and response relevance</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <span className="font-mono text-xs px-2.5 py-1 bg-accent-soft text-accent-ink rounded-full border border-accent/30 font-semibold">
             Model Judge: Bedrock / Claude 3 Haiku (92% Cheaper)
           </span>

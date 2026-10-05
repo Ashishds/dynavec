@@ -684,15 +684,15 @@ function ExampleQueriesRow({ onSelect }: { onSelect: (q: string) => void }) {
       </button>
 
       {open && (
-        <div className="absolute top-7 left-0 z-30 w-[520px] bg-surface border border-line rounded-xl shadow-xl overflow-hidden">
+        <div className="absolute top-7 left-0 z-30 w-[min(520px,calc(100vw-36px))] bg-surface border border-line rounded-xl shadow-xl overflow-hidden">
           {/* Tab strip */}
-          <div className="flex border-b border-line">
+          <div className="flex border-b border-line overflow-x-auto no-scrollbar">
             {QUERY_CATEGORIES.map((cat, i) => (
               <button
                 key={i}
                 type="button"
                 onClick={() => setActiveTab(i)}
-                className={`flex-1 px-3 py-2 font-mono text-[11px] transition-colors cursor-pointer ${
+                className={`flex-1 px-3 py-2 font-mono text-[10.5px] sm:text-[11px] whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
                   activeTab === i
                     ? "text-ink font-semibold border-b-2 border-accent bg-accent-soft/20"
                     : "text-faint hover:text-muted"
@@ -851,7 +851,7 @@ function DataConnectorsModal({ namespaces, onClose }: DataConnectorsModalProps) 
           {/* Connection Type */}
           <div>
             <label className={labelCls}>Connection Type</label>
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5">
               {CONNECTOR_TYPES.map((ct) => {
                 const isSelected = selectedType === ct.id;
                 return (

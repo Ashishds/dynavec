@@ -714,3 +714,63 @@ window.addEventListener("DOMContentLoaded", function () {
   });
 })();
 
+/* ---- 12. Mobile navigation toggle & drawer ---- */
+(function () {
+  document.addEventListener("DOMContentLoaded", function () {
+    const toggle = document.getElementById("navToggle");
+    const menu = document.getElementById("navMobileMenu");
+    if (!toggle || !menu) return;
+
+    function openMenu() {
+      toggle.classList.add("is-active");
+      toggle.setAttribute("aria-expanded", "true");
+      menu.classList.add("is-open");
+      menu.setAttribute("aria-hidden", "false");
+    }
+
+    function closeMenu() {
+      toggle.classList.remove("is-active");
+      toggle.setAttribute("aria-expanded", "false");
+      menu.classList.remove("is-open");
+      menu.setAttribute("aria-hidden", "true");
+    }
+
+    toggle.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (menu.classList.contains("is-open")) {
+        closeMenu();
+      } else {
+        openMenu();
+      }
+    });
+
+    // Close when clicking any link inside the mobile menu
+    menu.querySelectorAll("a").forEach(function (link) {
+      link.addEventListener("click", function () {
+        closeMenu();
+      });
+    });
+
+    // Close when clicking outside
+    document.addEventListener("click", function (e) {
+      if (menu.classList.contains("is-open") && !menu.contains(e.target) && !toggle.contains(e.target)) {
+        closeMenu();
+      }
+    });
+
+    // Close on escape key
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && menu.classList.contains("is-open")) {
+        closeMenu();
+      }
+    });
+
+    // Close when resizing window to desktop
+    window.addEventListener("resize", function () {
+      if (window.innerWidth > 860 && menu.classList.contains("is-open")) {
+        closeMenu();
+      }
+    });
+  });
+})();
+

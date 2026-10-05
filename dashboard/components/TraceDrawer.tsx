@@ -22,12 +22,18 @@ export default function TraceDrawer({
   if (!trace) return null;
 
   return (
-    <div className="fixed top-0 right-0 h-screen w-[min(460px,92vw)] bg-surface border-l border-line shadow-card z-20 overflow-y-auto p-[22px]">
-      <button
+    <>
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-xs z-40 transition-opacity"
         onClick={onClose}
-        className="absolute top-4 right-[18px] p-1 rounded-md text-muted hover:text-ink hover:bg-accent-soft/30 transition-colors cursor-pointer"
-        aria-label="Close trace drawer"
-      >
+        aria-hidden="true"
+      />
+      <div className="fixed top-0 right-0 h-screen w-[min(460px,94vw)] bg-surface border-l border-line shadow-card z-50 overflow-y-auto p-4 sm:p-[22px]">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-[18px] p-1.5 rounded-md text-muted hover:text-ink hover:bg-accent-soft/30 transition-colors cursor-pointer"
+          aria-label="Close trace drawer"
+        >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
@@ -88,6 +94,7 @@ export default function TraceDrawer({
           </p>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
