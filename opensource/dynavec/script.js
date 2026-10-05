@@ -679,7 +679,7 @@ window.addEventListener("DOMContentLoaded", function () {
 
 /* ---- 10. GitHub star count ---- */
 (function () {
-  fetch("https://api.github.com/repos/Ashishds/dynavec")
+  fetch("https://api.github.com/repos/codeforstartups/dynavec")
     .then((r) => r.json())
     .then((data) => {
       const count = data.stargazers_count;
