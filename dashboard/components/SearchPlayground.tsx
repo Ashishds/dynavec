@@ -14,6 +14,7 @@ import {
   type AuditEvaluationResponse,
   type BatchTestResult,
 } from "@/lib/api";
+import { getLandingUrl } from "@/lib/paths";
 
 // ─── Query Categories ───────────────────────────────────────────────────────
 const QUERY_CATEGORIES = [
@@ -1658,7 +1659,7 @@ export default function SearchPlayground() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-1.5 font-mono text-[11px] text-faint mb-1">
-            <a href="/" className="text-muted hover:text-accent hover:underline cursor-pointer transition-colors">
+            <a href={getLandingUrl()} className="text-muted hover:text-accent hover:underline cursor-pointer transition-colors">
               dynavec
             </a>
             <span className="text-faint/50">›</span>

@@ -5,9 +5,9 @@ export const metadata: Metadata = {
   title: "dynavec · Observability",
   description: "Real-time retrieval observability for dynavec — latency, cache, traces.",
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
+    icon: "favicon.svg",
+    shortcut: "favicon.svg",
+    apple: "favicon.svg",
   },
 };
 
@@ -15,7 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="icon" type="image/svg+xml" href="favicon.svg" />
         {/*
           Anti-flash theme script — runs synchronously before React hydration.
           Default is DARK (matches landing page). Applies html.dark unless user

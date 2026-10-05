@@ -1,6 +1,7 @@
 "use client";
 
 import ThemeToggle from "./ThemeToggle";
+import { getLandingUrl } from "@/lib/paths";
 
 const RANGES = [
   { label: "30m", w: 1800 },
@@ -48,9 +49,8 @@ export default function TopBar({
       )}
 
       {/* ── Brand logo — matches open source original dynavec brand mark ── */}
-      <button
-        type="button"
-        onClick={onHome}
+      <a
+        href={getLandingUrl()}
         className="flex items-center gap-2 font-mono font-bold text-[16px] sm:text-[17px] text-ink hover:opacity-85 transition-opacity cursor-pointer tracking-tight shrink-0"
         title="dynavec home"
         aria-label="dynavec home"
@@ -72,7 +72,7 @@ export default function TopBar({
           <circle cx="16" cy="16" r="2" fill="currentColor" stroke="none" />
         </svg>
         <span>dynavec</span>
-      </button>
+      </a>
 
       {/* ── Live cluster status badge ── */}
       <span className="text-muted text-[12px] sm:text-[13px] mr-auto flex items-center gap-1.5 sm:gap-2 truncate">

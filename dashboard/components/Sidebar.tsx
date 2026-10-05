@@ -1,5 +1,7 @@
 "use client";
 
+import { getLandingUrl } from "@/lib/paths";
+
 const GROUPS: { title: string; items: { label: string; id: string; badge?: string; soon?: boolean }[] }[] = [
   {
     title: "Studio",
@@ -172,6 +174,19 @@ export default function Sidebar({
           ))}
         </div>
       ))}
+
+      <div className="pt-3 mt-auto border-t border-line">
+        <a
+          href={getLandingUrl()}
+          className="w-full text-left flex items-center gap-2.5 px-2.5 py-2 md:py-1.5 rounded-lg text-[13px] text-muted hover:text-accent hover:bg-accent-soft/30 transition-colors"
+          title="Back to Landing Page"
+        >
+          <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          <span className="truncate font-sans font-medium">Dynavec Home</span>
+        </a>
+      </div>
     </nav>
   );
 }

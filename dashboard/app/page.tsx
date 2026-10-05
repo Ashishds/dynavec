@@ -20,9 +20,10 @@ import LandingPage from "@/components/LandingPage";
 import AgentCanvas from "@/components/agents/AgentCanvas";
 import WorkflowsPanel from "@/components/agents/WorkflowsPanel";
 import TestSuitePanel from "@/components/agents/TestSuitePanel";
+import { getLandingUrl } from "@/lib/paths";
 
 export default function Page() {
-  const [view, setView] = useState("landing");
+  const [view, setView] = useState("playground");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [activeTemplateId, setActiveTemplateId] = useState<string | undefined>(undefined);
   const [traceToReplay, setTraceToReplay] = useState<TraceEvent | null>(null);
@@ -57,16 +58,24 @@ export default function Page() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get("tab");
-      if (tab && tab !== "landing") {
+      if (tab === "landing") {
+        window.location.href = getLandingUrl();
+        return;
+      }
+      if (tab) {
         setView(tab);
       } else {
-        setView("landing");
+        setView("playground");
       }
 
       const handlePopState = () => {
         const p = new URLSearchParams(window.location.search);
         const t = p.get("tab");
-        setView(t && t !== "landing" ? t : "landing");
+        if (t === "landing") {
+          window.location.href = getLandingUrl();
+          return;
+        }
+        setView(t || "playground");
       };
       window.addEventListener("popstate", handlePopState);
       return () => window.removeEventListener("popstate", handlePopState);
@@ -74,18 +83,23 @@ export default function Page() {
   }, []);
 
   const handleViewChange = (v: string) => {
+    if (v === "landing") {
+      if (typeof window !== "undefined") {
+        window.location.href = getLandingUrl();
+      }
+      return;
+    }
     setView(v);
     setMobileNavOpen(false);
     if (typeof window !== "undefined") {
-      if (v === "landing") {
-        window.history.pushState(null, "", "/");
-      } else {
-        window.history.pushState(null, "", `?tab=${v}`);
-      }
+      window.history.pushState(null, "", `?tab=${v}`);
     }
   };
 
   if (view === "landing") {
+    if (typeof window !== "undefined") {
+      window.location.href = getLandingUrl();
+    }
     return <LandingPage onNavigate={handleViewChange} />;
   }
 

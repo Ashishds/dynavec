@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect } from "react";
+import { getLandingUrl } from "@/lib/paths";
 
 interface LandingPageProps {
   onNavigate: (tab: string) => void;
@@ -7,23 +8,17 @@ interface LandingPageProps {
 
 export default function LandingPage({ onNavigate }: LandingPageProps) {
   useEffect(() => {
-    const handleMessage = (e: MessageEvent) => {
-      if (e.data && e.data.type === "NAVIGATE_DASHBOARD") {
-        onNavigate(e.data.tab || "playground");
-      }
-    };
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, [onNavigate]);
+    if (typeof window !== "undefined") {
+      window.location.href = getLandingUrl();
+    }
+  }, []);
 
   return (
-    <div className="w-full h-screen overflow-hidden">
-      {/* 100% Upstream Open Source Landing Page */}
-      <iframe
-        src="/landing/index.html"
-        className="w-full h-full border-none block"
-        title="dynavec — serverless hybrid vector database on AWS"
-      />
+    <div className="w-full h-screen overflow-hidden flex items-center justify-center bg-bg text-ink font-mono text-sm">
+      <div className="flex items-center gap-2">
+        <span className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        <span>Redirecting to dynavec home...</span>
+      </div>
     </div>
   );
 }
