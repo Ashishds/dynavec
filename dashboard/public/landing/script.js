@@ -679,7 +679,7 @@ window.addEventListener("DOMContentLoaded", function () {
 
 /* ---- 10. GitHub star count ---- */
 (function () {
-  fetch("https://api.github.com/repos/Ashishds/dynavec")
+  fetch("https://api.github.com/repos/codeforstartups/dynavec")
     .then((r) => r.json())
     .then((data) => {
       const count = data.stargazers_count;
@@ -772,5 +772,62 @@ window.addEventListener("DOMContentLoaded", function () {
       }
     });
   });
+})();
+
+/* ---- 13. Light / Dark Theme Toggle (Dark by default) ---- */
+(function () {
+  function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.classList.toggle("dark", theme === "dark");
+
+    var label = document.getElementById("themeLabel");
+    if (label) label.textContent = theme === "dark" ? "Light" : "Dark";
+
+    var mobileLabel = document.getElementById("mobileThemeLabel");
+    if (mobileLabel) mobileLabel.textContent = theme === "dark" ? "Light Mode" : "Dark Mode";
+
+    var btn = document.getElementById("themeToggle");
+    if (btn) {
+      var nextTheme = theme === "dark" ? "light" : "dark";
+      btn.setAttribute("aria-label", "Switch to " + nextTheme + " mode");
+      btn.setAttribute("title", "Switch to " + nextTheme + " mode");
+    }
+  }
+
+  function initTheme() {
+    var stored = null;
+    try {
+      stored = localStorage.getItem("dynavec-theme");
+    } catch (e) {}
+
+    // Default to dark mode unless user previously explicitly selected light
+    var theme = stored === "light" ? "light" : "dark";
+    applyTheme(theme);
+
+    function onToggle() {
+      var current = document.documentElement.getAttribute("data-theme") || "dark";
+      var next = current === "dark" ? "light" : "dark";
+      applyTheme(next);
+      try {
+        localStorage.setItem("dynavec-theme", next);
+      } catch (e) {}
+    }
+
+    var toggleBtn = document.getElementById("themeToggle");
+    var mobileToggleBtn = document.getElementById("mobileThemeToggle");
+
+    if (toggleBtn) {
+      toggleBtn.addEventListener("click", onToggle);
+    }
+    if (mobileToggleBtn) {
+      mobileToggleBtn.addEventListener("click", onToggle);
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initTheme);
+  } else {
+    initTheme();
+  }
 })();
 
