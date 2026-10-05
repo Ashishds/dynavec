@@ -11,7 +11,12 @@
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
 
-  const NODES = 70;
+  // Check prefers-reduced-motion for accessibility & mobile battery optimization
+  const prefersReduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (prefersReduced) return;
+
+  const isMobile = window.innerWidth < 768;
+  const NODES = isMobile ? 32 : 70;
   const MAX_DIST = 160;
   const NODE_RADIUS = 2.2;
   const SPEED = 0.35;
@@ -20,6 +25,12 @@
   const LINE_COLOR = "rgba(180,180,200,";
 
   let W, H, nodes, dpr;
+  let isTabActive = true;
+
+  document.addEventListener("visibilitychange", () => {
+    isTabActive = !document.hidden;
+    if (isTabActive) requestAnimationFrame(tick);
+  });
 
   function resize() {
     dpr = window.devicePixelRatio || 1;
@@ -48,6 +59,7 @@
   }
 
   function tick() {
+    if (!isTabActive) return;
     ctx.clearRect(0, 0, W, H);
 
     nodes.forEach((n) => {
@@ -104,210 +116,313 @@
   tick();
 })();
 
-/* ---- 2. Benchmark charts ---- */
-window.addEventListener("DOMContentLoaded", function () {
-  if (typeof Chart === "undefined") return;
+/* ---- 2. Benchmark charts (Dark & Light theme aware) ---- */
+(function () {
+  const chartInstances = {};
 
-  const CORAL = "#e05a3a";
-  const GRAY1 = "#9ca3af";
-  const GRAY2 = "#c4c9d4";
-  const GRAY3 = "#d1d5db";
-  const GRAY4 = "#e5e7eb";
+  function getChartPalette(isDark) {
+    return {
+      coral: "#e05a3a",
+      coralBg: "#e05a3a22",
+      coralFill: "#e05a3acc",
+      gray1: isDark ? "#8b949e" : "#9ca3af",
+      gray2: isDark ? "#6e7681" : "#c4c9d4",
+      gray3: isDark ? "#484f58" : "#d1d5db",
+      gray4: isDark ? "#30363d" : "#e5e7eb",
+      textColor: isDark ? "#c9d1d9" : "#6a6a6a",
+      gridColor: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)",
+      borderColor: isDark ? "#14151a" : "#ffffff",
+    };
+  }
 
-  const font = { family: "'Inter', sans-serif", size: 12 };
-  Chart.defaults.font = font;
-  Chart.defaults.color = "#6a6a6a";
+  function applyChartsTheme(theme) {
+    const isDark = theme === "dark";
+    const p = getChartPalette(isDark);
 
-  // --- bench-matrix: grouped bar — cost by scale at 1536-dim ---
-  const matrixCtx = document.getElementById("bench-matrix");
-  if (matrixCtx) {
-    const scales = ["100K", "1M", "10M", "100M", "1B"];
-    new Chart(matrixCtx, {
-      type: "bar",
-      data: {
-        labels: scales,
-        datasets: [
-          {
-            label: "dynavec",
-            data: [3, 3, 8, 50, 469],
-            backgroundColor: CORAL,
+    if (typeof Chart !== "undefined") {
+      Chart.defaults.color = p.textColor;
+    }
+
+    if (chartInstances.matrix) {
+      const c = chartInstances.matrix;
+      c.options.scales.x.grid.color = p.gridColor;
+      c.options.scales.y.grid.color = p.gridColor;
+      c.options.scales.x.ticks.color = p.textColor;
+      c.options.scales.y.ticks.color = p.textColor;
+      c.options.scales.x.title.color = p.textColor;
+      c.options.scales.y.title.color = p.textColor;
+      c.options.plugins.title.color = p.textColor;
+      c.options.plugins.legend.labels.color = p.textColor;
+      c.data.datasets[1].backgroundColor = p.gray1;
+      c.data.datasets[2].backgroundColor = p.gray2;
+      c.data.datasets[3].backgroundColor = p.gray3;
+      c.data.datasets[4].backgroundColor = p.gray4;
+      c.update();
+    }
+    if (chartInstances.scale) {
+      const c = chartInstances.scale;
+      c.options.scales.x.grid.color = p.gridColor;
+      c.options.scales.y.grid.color = p.gridColor;
+      c.options.scales.x.ticks.color = p.textColor;
+      c.options.scales.y.ticks.color = p.textColor;
+      c.options.plugins.title.color = p.textColor;
+      c.options.plugins.legend.labels.color = p.textColor;
+      c.data.datasets[1].borderColor = p.gray1;
+      c.data.datasets[2].borderColor = p.gray2;
+      c.update();
+    }
+    if (chartInstances.storage) {
+      const c = chartInstances.storage;
+      c.options.scales.x.grid.color = p.gridColor;
+      c.options.scales.y.grid.color = p.gridColor;
+      c.options.scales.x.ticks.color = p.textColor;
+      c.options.scales.y.ticks.color = p.textColor;
+      c.options.scales.y.title.color = p.textColor;
+      c.options.plugins.title.color = p.textColor;
+      c.update();
+    }
+    if (chartInstances.quality) {
+      const c = chartInstances.quality;
+      c.options.plugins.title.color = p.textColor;
+      c.options.plugins.legend.labels.color = p.textColor;
+      c.data.datasets[0].borderColor = p.borderColor;
+      c.data.datasets[0].backgroundColor = [p.coral, p.gray1, p.gray2, p.gray3, p.gray4];
+      c.update();
+    }
+  }
+
+  window.updateDynavecChartsTheme = applyChartsTheme;
+
+  window.addEventListener("DOMContentLoaded", function () {
+    if (typeof Chart === "undefined") return;
+
+    const currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
+    const isDark = currentTheme === "dark";
+    const p = getChartPalette(isDark);
+
+    const font = { family: "'Inter', sans-serif", size: 12 };
+    Chart.defaults.font = font;
+    Chart.defaults.color = p.textColor;
+
+    // --- bench-matrix: grouped bar — cost by scale at 1536-dim ---
+    const matrixCtx = document.getElementById("bench-matrix");
+    if (matrixCtx) {
+      const scales = ["100K", "1M", "10M", "100M", "1B"];
+      chartInstances.matrix = new Chart(matrixCtx, {
+        type: "bar",
+        data: {
+          labels: scales,
+          datasets: [
+            {
+              label: "dynavec",
+              data: [3, 3, 8, 50, 469],
+              backgroundColor: p.coral,
+            },
+            {
+              label: "Pinecone",
+              data: [9, 10, 27, 197, 1897],
+              backgroundColor: p.gray1,
+            },
+            {
+              label: "Qdrant",
+              data: [160, 160, 960, 8640, 85920],
+              backgroundColor: p.gray2,
+            },
+            {
+              label: "Weaviate",
+              data: [175, 175, 1050, 9450, 93975],
+              backgroundColor: p.gray3,
+            },
+            {
+              label: "OpenSearch",
+              data: [701, 701, 877, 8423, 83708],
+              backgroundColor: p.gray4,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "top",
+              labels: { color: p.textColor },
+            },
+            title: {
+              display: true,
+              text: "Monthly cost ($/mo) — 1536-dim, 1M queries/mo",
+              font: { size: 13 },
+              color: p.textColor,
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) =>
+                  ` ${ctx.dataset.label}: $${ctx.parsed.y.toLocaleString()}`,
+              },
+            },
           },
-          {
-            label: "Pinecone",
-            data: [9, 10, 27, 197, 1897],
-            backgroundColor: GRAY1,
-          },
-          {
-            label: "Qdrant",
-            data: [160, 160, 960, 8640, 85920],
-            backgroundColor: GRAY2,
-          },
-          {
-            label: "Weaviate",
-            data: [175, 175, 1050, 9450, 93975],
-            backgroundColor: GRAY3,
-          },
-          {
-            label: "OpenSearch",
-            data: [701, 701, 877, 8423, 83708],
-            backgroundColor: GRAY4,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: "top" },
-          title: {
-            display: true,
-            text: "Monthly cost ($/mo) — 1536-dim, 1M queries/mo",
-            font: { size: 13 },
-          },
-          tooltip: {
-            callbacks: {
-              label: (ctx) =>
-                ` ${ctx.dataset.label}: $${ctx.parsed.y.toLocaleString()}`,
+          scales: {
+            y: {
+              type: "logarithmic",
+              title: { display: true, text: "$/month (log scale)", color: p.textColor },
+              ticks: { callback: (v) => "$" + v.toLocaleString(), color: p.textColor },
+              grid: { color: p.gridColor },
+            },
+            x: {
+              title: { display: true, text: "Vector count", color: p.textColor },
+              ticks: { color: p.textColor },
+              grid: { color: p.gridColor },
             },
           },
         },
-        scales: {
-          y: {
-            type: "logarithmic",
-            title: { display: true, text: "$/month (log scale)" },
-            ticks: { callback: (v) => "$" + v.toLocaleString() },
-          },
-          x: { title: { display: true, text: "Vector count" } },
-        },
-      },
-    });
-  }
+      });
+    }
 
-  // --- bench-scale: line — cost by scale at 768-dim ---
-  const scaleCtx = document.getElementById("bench-scale");
-  if (scaleCtx) {
-    const pts = ["100K", "1M", "10M", "100M", "1B"];
-    new Chart(scaleCtx, {
-      type: "line",
-      data: {
-        labels: pts,
-        datasets: [
-          {
-            label: "dynavec",
-            data: [2, 2, 5, 32, 295],
-            borderColor: CORAL,
-            backgroundColor: CORAL + "22",
-            tension: 0.35,
-            fill: true,
+    // --- bench-scale: line — cost by scale at 768-dim ---
+    const scaleCtx = document.getElementById("bench-scale");
+    if (scaleCtx) {
+      const pts = ["100K", "1M", "10M", "100M", "1B"];
+      chartInstances.scale = new Chart(scaleCtx, {
+        type: "line",
+        data: {
+          labels: pts,
+          datasets: [
+            {
+              label: "dynavec",
+              data: [2, 2, 5, 32, 295],
+              borderColor: p.coral,
+              backgroundColor: p.coralBg,
+              tension: 0.35,
+              fill: true,
+            },
+            {
+              label: "Pinecone",
+              data: [9, 10, 27, 197, 1897],
+              borderColor: p.gray1,
+              backgroundColor: "transparent",
+              tension: 0.35,
+            },
+            {
+              label: "Qdrant",
+              data: [80, 80, 480, 4320, 42960],
+              borderColor: p.gray2,
+              backgroundColor: "transparent",
+              tension: 0.35,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "top",
+              labels: { color: p.textColor },
+            },
+            title: {
+              display: true,
+              text: "Cost by scale (768-d)",
+              font: { size: 12 },
+              color: p.textColor,
+            },
           },
-          {
-            label: "Pinecone",
-            data: [9, 10, 27, 197, 1897],
-            borderColor: GRAY1,
-            backgroundColor: "transparent",
-            tension: 0.35,
-          },
-          {
-            label: "Qdrant",
-            data: [80, 80, 480, 4320, 42960],
-            borderColor: GRAY2,
-            backgroundColor: "transparent",
-            tension: 0.35,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: "top" },
-          title: {
-            display: true,
-            text: "Cost by scale (768-d)",
-            font: { size: 12 },
+          scales: {
+            y: {
+              type: "logarithmic",
+              ticks: { callback: (v) => "$" + v.toLocaleString(), color: p.textColor },
+              grid: { color: p.gridColor },
+            },
+            x: {
+              ticks: { color: p.textColor },
+              grid: { color: p.gridColor },
+            },
           },
         },
-        scales: {
-          y: {
-            type: "logarithmic",
-            ticks: { callback: (v) => "$" + v.toLocaleString() },
-          },
-        },
-      },
-    });
-  }
+      });
+    }
 
-  // --- bench-storage: bar — raw storage footprint ---
-  const storageCtx = document.getElementById("bench-storage");
-  if (storageCtx) {
-    new Chart(storageCtx, {
-      type: "bar",
-      data: {
-        labels: ["100K", "1M", "10M", "100M", "1B"],
-        datasets: [
-          {
-            label: "Storage (GiB)",
-            data: [0.57, 5.7, 57, 573, 5730],
-            backgroundColor: CORAL + "cc",
+    // --- bench-storage: bar — raw storage footprint ---
+    const storageCtx = document.getElementById("bench-storage");
+    if (storageCtx) {
+      chartInstances.storage = new Chart(storageCtx, {
+        type: "bar",
+        data: {
+          labels: ["100K", "1M", "10M", "100M", "1B"],
+          datasets: [
+            {
+              label: "Storage (GiB)",
+              data: [0.57, 5.7, 57, 573, 5730],
+              backgroundColor: p.coralFill,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            title: {
+              display: true,
+              text: "Float32 storage footprint (1536-d)",
+              font: { size: 12 },
+              color: p.textColor,
+            },
           },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          title: {
-            display: true,
-            text: "Float32 storage footprint (1536-d)",
-            font: { size: 12 },
+          scales: {
+            y: {
+              type: "logarithmic",
+              title: { display: true, text: "GiB (log)", color: p.textColor },
+              ticks: { callback: (v) => v + " GiB", color: p.textColor },
+              grid: { color: p.gridColor },
+            },
+            x: {
+              ticks: { color: p.textColor },
+              grid: { color: p.gridColor },
+            },
           },
         },
-        scales: {
-          y: {
-            type: "logarithmic",
-            title: { display: true, text: "GiB (log)" },
-            ticks: { callback: (v) => v + " GiB" },
-          },
-        },
-      },
-    });
-  }
+      });
+    }
 
-  // --- quality-chart: doughnut — recall/latency score ---
-  const qualityCtx = document.getElementById("quality-chart");
-  if (qualityCtx) {
-    new Chart(qualityCtx, {
-      type: "doughnut",
-      data: {
-        labels: ["dynavec", "Pinecone", "Qdrant", "Weaviate", "OpenSearch"],
-        datasets: [
-          {
-            data: [92, 88, 85, 82, 74],
-            backgroundColor: [CORAL, GRAY1, GRAY2, GRAY3, GRAY4],
-            borderWidth: 2,
-            borderColor: "#fff",
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        cutout: "62%",
-        plugins: {
-          legend: { position: "bottom", labels: { boxWidth: 12 } },
-          title: {
-            display: true,
-            text: "Recall ÷ Latency score",
-            font: { size: 12 },
-          },
-          tooltip: {
-            callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.parsed}` },
+    // --- quality-chart: doughnut — recall/latency score ---
+    const qualityCtx = document.getElementById("quality-chart");
+    if (qualityCtx) {
+      chartInstances.quality = new Chart(qualityCtx, {
+        type: "doughnut",
+        data: {
+          labels: ["dynavec", "Pinecone", "Qdrant", "Weaviate", "OpenSearch"],
+          datasets: [
+            {
+              data: [92, 88, 85, 82, 74],
+              backgroundColor: [p.coral, p.gray1, p.gray2, p.gray3, p.gray4],
+              borderWidth: 2,
+              borderColor: p.borderColor,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          cutout: "62%",
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: { boxWidth: 12, color: p.textColor },
+            },
+            title: {
+              display: true,
+              text: "Recall ÷ Latency score",
+              font: { size: 12 },
+              color: p.textColor,
+            },
+            tooltip: {
+              callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.parsed}` },
+            },
           },
         },
-      },
-    });
-  }
-});
+      });
+    }
+  });
+})();
 
 /* ---- 3. Cost calculator v2 ---- */
 (function () {
@@ -491,7 +606,7 @@ window.addEventListener("DOMContentLoaded", function () {
   document.querySelectorAll(".copy[data-copy]").forEach((btn) => {
     btn.addEventListener("click", () => {
       navigator.clipboard.writeText(btn.dataset.copy).then(() => {
-        btn.textContent = "Copied!";
+        btn.textContent = "✓ Copied";
         btn.classList.add("is-done");
         setTimeout(() => {
           btn.textContent = "copy";
@@ -506,7 +621,8 @@ window.addEventListener("DOMContentLoaded", function () {
 (function () {
   const facade = document.getElementById("yt-facade");
   if (!facade) return;
-  facade.addEventListener("click", () => {
+  facade.addEventListener("click", (e) => {
+    e.preventDefault();
     const iframe = document.createElement("iframe");
     iframe.src = "https://www.youtube.com/embed/UJ9MBALD380?autoplay=1&rel=0";
     iframe.allow =
@@ -514,13 +630,16 @@ window.addEventListener("DOMContentLoaded", function () {
     iframe.setAttribute("allowfullscreen", "");
     iframe.style.cssText =
       "position:absolute;inset:0;width:100%;height:100%;border:0;";
-    // Clear thumbnail/play button and drop in the iframe
+    // Clear thumbnail/play button and drop in the iframe inline
     facade.innerHTML = "";
     facade.style.cursor = "default";
     facade.appendChild(iframe);
   });
   facade.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") facade.click();
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      facade.click();
+    }
   });
 })();
 
@@ -792,6 +911,10 @@ window.addEventListener("DOMContentLoaded", function () {
       btn.setAttribute("aria-label", "Switch to " + nextTheme + " mode");
       btn.setAttribute("title", "Switch to " + nextTheme + " mode");
     }
+
+    if (typeof window.updateDynavecChartsTheme === "function") {
+      window.updateDynavecChartsTheme(theme);
+    }
   }
 
   function initTheme() {
@@ -830,4 +953,223 @@ window.addEventListener("DOMContentLoaded", function () {
     initTheme();
   }
 })();
+
+/* ---- 14. Lightweight Python / Shell Syntax Highlighter ---- */
+(function () {
+  function escapeHtml(str) {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function highlightSyntax(rawText) {
+    const lines = rawText.split("\n");
+    return lines
+      .map((line) => {
+        let codePart = line;
+        let commentPart = "";
+
+        // Find comment start outside quotes
+        let inSingle = false;
+        let inDouble = false;
+        let cIdx = -1;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === "'" && !inDouble && (i === 0 || line[i - 1] !== "\\")) {
+            inSingle = !inSingle;
+          } else if (ch === '"' && !inSingle && (i === 0 || line[i - 1] !== "\\")) {
+            inDouble = !inDouble;
+          } else if (ch === "#" && !inSingle && !inDouble) {
+            cIdx = i;
+            break;
+          }
+        }
+
+        if (cIdx !== -1) {
+          codePart = line.substring(0, cIdx);
+          commentPart = '<span class="c-comment">' + escapeHtml(line.substring(cIdx)) + "</span>";
+        }
+
+        // Tokenize strings safely
+        const stringTokens = [];
+        codePart = codePart.replace(/(["'])(?:(?=(\\?))\2.)*?\1/g, (match) => {
+          const token = `___STR_TOKEN_${stringTokens.length}___`;
+          stringTokens.push('<span class="c-str">' + escapeHtml(match) + "</span>");
+          return token;
+        });
+
+        codePart = escapeHtml(codePart);
+
+        // Keywords
+        const kwRegex = /\b(from|import|for|in|if|else|elif|return|def|class|with|as|not|and|or|is|True|False|None|lambda|try|except|pip|uv|export)\b/g;
+        codePart = codePart.replace(kwRegex, '<span class="c-kw">$1</span>');
+
+        // Functions and classes
+        const fnRegex = /\b([a-zA-Z_][a-zA-Z0-9_]*)(?=\s*\()/g;
+        codePart = codePart.replace(fnRegex, '<span class="c-fn">$1</span>');
+
+        // Numbers
+        const numRegex = /\b(\d+(?:\.\d+)?)\b/g;
+        codePart = codePart.replace(numRegex, '<span class="c-num">$1</span>');
+
+        // Reinsert strings
+        stringTokens.forEach((strHtml, idx) => {
+          codePart = codePart.replace(`___STR_TOKEN_${idx}___`, strHtml);
+        });
+
+        return codePart + commentPart;
+      })
+      .join("\n");
+  }
+
+  function applyHighlighting() {
+    document.querySelectorAll(".code code").forEach((codeEl) => {
+      if (codeEl.dataset.highlighted) return;
+      codeEl.dataset.highlighted = "true";
+      codeEl.innerHTML = highlightSyntax(codeEl.textContent);
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", applyHighlighting);
+  } else {
+    applyHighlighting();
+  }
+})();
+
+/* ---- 15. Hero Stats Count-Up Animation ---- */
+(function () {
+  function initHeroCounters() {
+    const statElements = document.querySelectorAll(".hero__stats .stat__n");
+    if (!statElements.length) return;
+    let animated = false;
+
+    function runCounters() {
+      if (animated) return;
+      animated = true;
+
+      statElements.forEach((el) => {
+        const text = el.textContent.trim();
+        let prefix = "";
+        let suffix = "";
+        let numStr = text;
+
+        if (numStr.startsWith("$")) {
+          prefix = "$";
+          numStr = numStr.substring(1);
+        }
+        if (numStr.endsWith("%")) {
+          suffix = "%";
+          numStr = numStr.slice(0, -1);
+        }
+
+        const target = parseFloat(numStr);
+        if (isNaN(target) || target <= 0) return;
+
+        const duration = 1200;
+        let startTime = null;
+
+        function step(timestamp) {
+          if (!startTime) startTime = timestamp;
+          const progress = Math.min((timestamp - startTime) / duration, 1);
+          const ease = 1 - Math.pow(1 - progress, 3);
+          const current = Math.floor(ease * target);
+          el.textContent = prefix + current.toLocaleString() + suffix;
+          if (progress < 1) {
+            requestAnimationFrame(step);
+          } else {
+            el.textContent = prefix + target.toLocaleString() + suffix;
+          }
+        }
+        requestAnimationFrame(step);
+      });
+    }
+
+    if ("IntersectionObserver" in window) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              runCounters();
+              observer.disconnect();
+            }
+          });
+        },
+        { threshold: 0.1 }
+      );
+      const container = document.querySelector(".hero__stats");
+      if (container) observer.observe(container);
+      else runCounters();
+    } else {
+      runCounters();
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initHeroCounters);
+  } else {
+    initHeroCounters();
+  }
+})();
+
+/* ---- 16. Nav Active Section Scroll Spy ---- */
+(function () {
+  document.addEventListener("DOMContentLoaded", function () {
+    const navLinks = document.querySelectorAll(".nav__links a[href^='#']");
+    if (!navLinks.length || !("IntersectionObserver" in window)) return;
+
+    const sections = Array.from(navLinks)
+      .map((link) => {
+        const id = link.getAttribute("href").replace("#", "");
+        return document.getElementById(id);
+      })
+      .filter(Boolean);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const id = entry.target.id;
+            navLinks.forEach((link) => {
+              if (link.getAttribute("href") === "#" + id) {
+                link.classList.add("is-active");
+              } else {
+                link.classList.remove("is-active");
+              }
+            });
+          }
+        });
+      },
+      { rootMargin: "-20% 0px -70% 0px" }
+    );
+
+    sections.forEach((sec) => observer.observe(sec));
+  });
+})();
+
+/* ---- 17. Floating Back to Top Button ---- */
+(function () {
+  document.addEventListener("DOMContentLoaded", function () {
+    const btt = document.getElementById("backToTop");
+    if (!btt) return;
+
+    window.addEventListener(
+      "scroll",
+      function () {
+        if (window.scrollY > 400) {
+          btt.classList.add("is-visible");
+        } else {
+          btt.classList.remove("is-visible");
+        }
+      },
+      { passive: true }
+    );
+
+    btt.addEventListener("click", function () {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  });
+})();
+
 

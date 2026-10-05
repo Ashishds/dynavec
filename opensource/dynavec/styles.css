@@ -183,6 +183,40 @@ html.dark {
   background: radial-gradient(circle, #6366f1 0%, #312e81 60%, transparent 100%);
 }
 
+/* Dark mode table highlight */
+[data-theme="dark"] .table tbody tr.is-best {
+  background: rgba(232, 98, 59, 0.14);
+  border-left: 3px solid var(--accent);
+}
+[data-theme="dark"] .table tbody tr.is-best td {
+  border-bottom-color: rgba(232, 98, 59, 0.22);
+  color: #fff;
+}
+[data-theme="dark"] .table tbody tr.is-best td:first-child {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Dark mode architecture diagram lift */
+[data-theme="dark"] .arch {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 45px rgba(232, 98, 59, 0.08), 0 20px 50px rgba(0, 0, 0, 0.5);
+  background: #111218;
+}
+
+/* Dark mode card hover enhancement */
+[data-theme="dark"] .grid--3 .card:hover {
+  background: #171821;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(232, 98, 59, 0.2);
+}
+
+/* Dark mode trust strip */
+[data-theme="dark"] .trust-strip {
+  background: rgba(13, 13, 17, 0.6);
+  border-bottom-color: rgba(255, 255, 255, 0.07);
+}
+
+
 /* ---- Theme Toggle Button Styling ---- */
 .nav__theme {
   display: inline-flex;
@@ -310,6 +344,25 @@ body {
 }
 .nav__links a:hover { color: var(--fg); }
 .nav__links a:hover::after { width: 60%; }
+.nav__links a.is-active { color: var(--fg); font-weight: 600; }
+.nav__links a.is-active::after { width: 60%; }
+
+/* Live activity dot for GitHub Star button */
+.star__live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: star-pulse 2.2s infinite cubic-bezier(0.66, 0, 0, 1);
+  margin-right: 2px;
+}
+@keyframes star-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
 
 /* GitHub star button — pill with glow */
 .star {
@@ -613,8 +666,8 @@ body {
 .grid--3 { grid-template-columns: repeat(3, 1fr); }
 .grid--2 { grid-template-columns: repeat(2, 1fr); gap: 20px; background: transparent; border: none; border-radius: 0; overflow: visible; }
 
-.card { background: var(--bg); padding: 30px 26px; position: relative; transition: background var(--t); }
-.grid--3 .card:hover { background: var(--surface); }
+.card { background: var(--bg); padding: 30px 26px; position: relative; transition: background var(--t), transform var(--t), box-shadow var(--t); }
+.grid--3 .card:hover { background: var(--surface); transform: translateY(-2px); box-shadow: var(--sh); }
 
 .grid--2 .card {
   border: 1px solid var(--border);
@@ -623,7 +676,8 @@ body {
 }
 .grid--2 .card:hover { box-shadow: var(--sh); border-color: var(--border-md); }
 
-.card__no { font-family: var(--mono); font-size: 11.5px; font-weight: 700; color: var(--accent); display: block; margin-bottom: 14px; letter-spacing: 0.04em; }
+.card__no { font-family: var(--mono); font-size: 11.5px; font-weight: 700; color: var(--accent); display: block; margin-bottom: 14px; letter-spacing: 0.04em; transition: transform var(--t); }
+.grid--3 .card:hover .card__no { transform: scale(1.08); }
 .card h3 { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
 .card p { color: var(--fg-2); font-size: 14.5px; line-height: 1.65; }
 .card > p > code,
@@ -868,9 +922,11 @@ body {
   tab-size: 2;
 }
 .code.is-hidden { display: none; }
-.code .c-comment { color: #555; font-style: italic; }
-.code .c-str { color: #89c18a; }
-.code .c-kw { color: #dba96e; font-weight: 600; }
+.code .c-comment { color: #8b949e; font-style: italic; }
+.code .c-str { color: #7ee787; }
+.code .c-kw { color: #ff7b72; font-weight: 600; }
+.code .c-fn { color: #79c0ff; }
+.code .c-num { color: #d2a8ff; }
 
 .code--sm {
   font-size: 12.5px;
@@ -1555,3 +1611,90 @@ body {
   border-color: var(--accent); color: var(--accent);
   background: var(--accent-bg);
 }
+
+/* ================================================
+   TRUST STRIP
+   ================================================ */
+.trust-strip {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.trust-strip__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.trust-strip__label {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--fg-4);
+  text-transform: uppercase;
+}
+.trust-strip__badges {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.trust-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--fg-2);
+}
+.trust-badge__icon {
+  font-size: 13px;
+}
+
+/* ================================================
+   FLOATING BACK TO TOP BUTTON
+   ================================================ */
+.back-to-top {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--fg);
+  border: 1px solid var(--border-md);
+  box-shadow: var(--sh);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 99;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(12px);
+  transition: opacity 0.25s var(--ease), transform 0.25s var(--ease), background var(--t), color var(--t), border-color var(--t);
+}
+.back-to-top.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+.back-to-top:hover {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 4px 16px rgba(232, 98, 59, 0.4);
+  transform: translateY(-2px);
+}
+@media (max-width: 600px) {
+  .back-to-top {
+    bottom: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+  }
+}
+
