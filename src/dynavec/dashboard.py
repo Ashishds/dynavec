@@ -293,7 +293,7 @@ def _normalize_query(q: str) -> tuple[str, list[str], set[str]]:
     corrected_words = []
     for w in words:
         if len(w) >= 5 and w not in ("multi", "scale", "depth", "layer", "batch", "query", "heads"):
-            matches = difflib.get_close_matches(w, KNOWN_RAG_KEYWORDS, n=1, cutoff=0.72)
+            matches = difflib.get_close_matches(w, KNOWN_RAG_KEYWORDS, n=1, cutoff=0.82)
             if matches:
                 corrected_words.append(matches[0])
                 continue
@@ -309,6 +309,39 @@ def _normalize_query(q: str) -> tuple[str, list[str], set[str]]:
 # In-memory document library store for tracking uploaded & crawled knowledge sources
 _DOCUMENTS_STORE: list[dict] = [
     {
+        "id": "doc_attention_paper",
+        "filename": "1706.03762v7 (3).pdf",
+        "source": "arXiv:1706.03762v7 (Attention Is All You Need)",
+        "size_bytes": 2215244,
+        "status": "Completed",
+        "chunks": 63,
+        "uploaded_at": "05/10/2026, 16:38:00",
+        "namespace": "production-core",
+        "type": "pdf",
+    },
+    {
+        "id": "doc_linux_qa",
+        "filename": "Linux Questions.pdf",
+        "source": "Linux System Administration & Architecture",
+        "size_bytes": 842100,
+        "status": "Completed",
+        "chunks": 65,
+        "uploaded_at": "01/10/2026, 11:20:14",
+        "namespace": "production-core",
+        "type": "pdf",
+    },
+    {
+        "id": "doc_interview_prep",
+        "filename": "Interview_Prep_Guide_Ashish_DataScientist.pdf",
+        "source": "Data Scientist Core Machine Learning & Deep Learning Prep",
+        "size_bytes": 412500,
+        "status": "Completed",
+        "chunks": 27,
+        "uploaded_at": "02/10/2026, 14:15:22",
+        "namespace": "production-core",
+        "type": "pdf",
+    },
+    {
         "id": "doc_yt_37pbbwwaxqm",
         "filename": "youtube_37PBBwWaXQM.youtube",
         "source": "https://www.youtube.com/watch?v=37PBBwWaXQM",
@@ -318,7 +351,7 @@ _DOCUMENTS_STORE: list[dict] = [
         "uploaded_at": "31/05/2026, 16:23:36",
         "namespace": "production-core",
         "type": "youtube",
-    }
+    },
 ]
 
 
@@ -356,6 +389,7 @@ def _make_handler(
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+            self.send_header("Content-Length", "0")
             self.end_headers()
 
         def _check_auth(self) -> bool:
@@ -680,7 +714,7 @@ def _make_handler(
                 except Exception as exc:
                     return self._send(500, json.dumps({"error": str(exc)}))
             if path == "/api/namespaces":
-                all_ns = {"production-core", "live-demo"}
+                all_ns = {"production-core", "transformer-paper", "portfolio-demo", "live-demo"}
                 for ev in recorder.events(limit=500):
                     if ev.namespace:
                         all_ns.add(ev.namespace)
@@ -1000,7 +1034,7 @@ def _make_handler(
                 except Exception as exc:
                     return self._send(500, json.dumps({"error": str(exc)}))
 
-            if self.path == "/api/ingest-file":
+            if parsed.path.rstrip("/") == "/api/ingest-file" or self.path.split("?")[0].rstrip("/") == "/api/ingest-file":
                 if not db:
                     return self._send(503, json.dumps({"error": "Dynavec client not attached"}))
                 length = int(self.headers.get("Content-Length", 0))
@@ -1022,6 +1056,7 @@ def _make_handler(
                     t0 = time.perf_counter()
                     if filename.lower().endswith(".pdf"):
                         try:
+                            # Primary: pypdf
                             from pypdf import PdfReader
 
                             reader = PdfReader(io.BytesIO(raw_bytes))
@@ -1039,10 +1074,30 @@ def _make_handler(
                                             },
                                         )
                                     )
-                        except Exception as e:
-                            return self._send(
-                                400, json.dumps({"error": f"Failed to parse PDF: {e}"})
-                            )
+                        except Exception:
+                            # Robust fallback: PyMuPDF (fitz)
+                            try:
+                                import pymupdf as fitz
+                                doc = fitz.open(stream=raw_bytes, filetype="pdf")
+                                for page_num, page in enumerate(doc, start=1):
+                                    txt = page.get_text("text") or ""
+                                    if txt.strip():
+                                        records.append(
+                                            Record(
+                                                id=f"{filename}#p{page_num}",
+                                                text=txt,
+                                                metadata={
+                                                    "filename": filename,
+                                                    "page": page_num,
+                                                    "category": cat,
+                                                },
+                                            )
+                                        )
+                                doc.close()
+                            except Exception as e2:
+                                return self._send(
+                                    400, json.dumps({"error": f"Failed to parse PDF: {e2}"})
+                                )
                     elif filename.lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".bmp")):
                         try:
                             from PIL import Image
@@ -1260,6 +1315,21 @@ def _make_handler(
                     return self._send(400, json.dumps({"error": "id parameter required"}))
                 except Exception as e:
                     return self._send(500, json.dumps({"error": str(e)}))
+
+            if parsed.path.rstrip("/") == "/api/connector":
+                length = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(length).decode("utf-8") if length > 0 else "{}"
+                try:
+                    payload = json.loads(body)
+                    c_name = payload.get("name", "connector")
+                    c_type = payload.get("type", "s3")
+                    return self._send(200, json.dumps({
+                        "status": "ok",
+                        "message": f"Connector '{c_name}' ({c_type}) registered and active.",
+                        "connector": payload,
+                    }))
+                except Exception as e:
+                    return self._send(400, json.dumps({"error": str(e)}))
 
             return self._send(404, json.dumps({"error": "not found"}))
 
