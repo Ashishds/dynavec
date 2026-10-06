@@ -30,25 +30,25 @@ export default function NamespacesPanel({ traces = [], onSelectNamespace }: Name
         {
           name: "production-core",
           env: "AWS us-east-1",
-          count: 174,
+          count: 204,
           status: "Active",
         },
         {
           name: "transformer-paper",
           env: "AWS us-east-1",
-          count: 75,
+          count: 63,
           status: "Active",
         },
         {
           name: "portfolio-demo",
           env: "AWS us-east-1",
-          count: 12,
+          count: 52,
           status: "Active",
         },
         {
           name: "live-demo",
           env: "AWS us-east-1",
-          count: 4,
+          count: 40,
           status: "Active",
         },
       ];

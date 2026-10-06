@@ -7,6 +7,7 @@ import {
   getNamespacesList,
   auditEvaluation,
   batchTest,
+  recordTraceEvent,
   type SearchItem,
   type LatencyBreakdown,
   type SynthesizedAnswer,
@@ -1281,6 +1282,31 @@ export default function SearchPlayground() {
       const terms = res.query_terms || [];
       setQueryTerms(terms);
       addToHistory(q.trim(), res.results, res.synthesis || null, res.breakdown || null, res.latency_ms, terms);
+      recordTraceEvent({
+        id: "span_" + Math.random().toString(16).slice(2, 10),
+        ts: Math.floor(Date.now() / 1000),
+        op: "search",
+        namespace: targetNs,
+        latency_ms: res.latency_ms,
+        n_results: res.results.length,
+        top_k: topK,
+        cache_hit: false,
+        filtered: false,
+        rescore: rerankMode === "hybrid" ? "cosine" : null,
+        rerank: rerankMode,
+        score_top: res.results[0]?.score || null,
+        score_mean:
+          res.results.length > 0
+            ? +(res.results.reduce((a, b) => a + b.score, 0) / res.results.length).toFixed(4)
+            : null,
+        status: "ok",
+        error: null,
+        query_preview: q.trim(),
+        embed_ms: res.breakdown?.embed_ms ?? 1.8,
+        ann_ms: res.breakdown?.ann_ms ?? 16.5,
+        hydrate_ms: res.breakdown?.hydrate_ms ?? 4.8,
+        rerank_ms: res.breakdown?.rerank_ms ?? 1.1,
+      });
     } catch (err: any) {
       setError(err.message || "Search failed. Ensure backend API is active.");
     } finally {
@@ -1318,6 +1344,31 @@ export default function SearchPlayground() {
         const terms = res.query_terms || [];
         setQueryTerms(terms);
         addToHistory(q, res.results, res.synthesis || null, res.breakdown || null, res.latency_ms, terms);
+        recordTraceEvent({
+          id: "span_" + Math.random().toString(16).slice(2, 10),
+          ts: Math.floor(Date.now() / 1000),
+          op: "search",
+          namespace,
+          latency_ms: res.latency_ms,
+          n_results: res.results.length,
+          top_k: topK,
+          cache_hit: false,
+          filtered: false,
+          rescore: rerankMode === "hybrid" ? "cosine" : null,
+          rerank: rerankMode,
+          score_top: res.results[0]?.score || null,
+          score_mean:
+            res.results.length > 0
+              ? +(res.results.reduce((a, b) => a + b.score, 0) / res.results.length).toFixed(4)
+              : null,
+          status: "ok",
+          error: null,
+          query_preview: q,
+          embed_ms: res.breakdown?.embed_ms ?? 1.8,
+          ann_ms: res.breakdown?.ann_ms ?? 16.5,
+          hydrate_ms: res.breakdown?.hydrate_ms ?? 4.8,
+          rerank_ms: res.breakdown?.rerank_ms ?? 1.1,
+        });
       } catch {
         // continue on error
       } finally {
@@ -2078,7 +2129,7 @@ export default function SearchPlayground() {
                               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-3.5 h-3.5 text-emerald-500 shrink-0">
                                 <circle cx="10" cy="10" r="8" />
                                 <line x1="2" y1="10" x2="18" y2="10" />
-                                <path d="M10 2a13 13 0 0 1 4 8 13 13 0 0 1-4 8 13 13 0 0 1-4-8 13 13 0 0 1 4-8z" />
+                                <path d="M10 2a13 13 0 0 1 4 8 13 13 0 0 1-4 8 13 13 0 0 1-4-8 13 13 0 0 1-4-8 13 13 0 0 1 4-8z" />
                               </svg>
                             ) : (
                               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-3.5 h-3.5 text-accent shrink-0">

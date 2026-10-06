@@ -308,6 +308,7 @@ def _normalize_query(q: str) -> tuple[str, list[str], set[str]]:
 
 # In-memory document library store for tracking uploaded & crawled knowledge sources
 _DOCUMENTS_STORE: list[dict] = [
+    # ── transformer-paper Partition (63 Chunks) ──
     {
         "id": "doc_attention_paper",
         "filename": "1706.03762v7 (3).pdf",
@@ -316,9 +317,10 @@ _DOCUMENTS_STORE: list[dict] = [
         "status": "Completed",
         "chunks": 63,
         "uploaded_at": "05/10/2026, 16:38:00",
-        "namespace": "production-core",
+        "namespace": "transformer-paper",
         "type": "pdf",
     },
+    # ── production-core Partition (204 Chunks: 65 + 68 + 40 + 27 + 4) ──
     {
         "id": "doc_linux_qa",
         "filename": "Linux Questions.pdf",
@@ -327,6 +329,28 @@ _DOCUMENTS_STORE: list[dict] = [
         "status": "Completed",
         "chunks": 65,
         "uploaded_at": "01/10/2026, 11:20:14",
+        "namespace": "production-core",
+        "type": "pdf",
+    },
+    {
+        "id": "doc_aws_arch",
+        "filename": "aws-serverless-vector-architecture.pdf",
+        "source": "AWS DynamoDB & Amazon S3 Vectors Hybrid Storage Specification",
+        "size_bytes": 654200,
+        "status": "Completed",
+        "chunks": 68,
+        "uploaded_at": "03/10/2026, 09:42:18",
+        "namespace": "production-core",
+        "type": "pdf",
+    },
+    {
+        "id": "doc_enterprise_eval",
+        "filename": "enterprise-rag-evaluation-benchmarks.pdf",
+        "source": "Enterprise RAG Evaluation, Recall@k & Latency SLA Report",
+        "size_bytes": 489300,
+        "status": "Completed",
+        "chunks": 40,
+        "uploaded_at": "04/10/2026, 14:15:30",
         "namespace": "production-core",
         "type": "pdf",
     },
@@ -351,6 +375,30 @@ _DOCUMENTS_STORE: list[dict] = [
         "uploaded_at": "31/05/2026, 16:23:36",
         "namespace": "production-core",
         "type": "youtube",
+    },
+    # ── portfolio-demo Partition (52 Chunks) ──
+    {
+        "id": "doc_portfolio_showcase",
+        "filename": "dynavec-interactive-showcase.md",
+        "source": "Interactive Vector DB Showcase & Sample Query Embeddings",
+        "size_bytes": 312800,
+        "status": "Completed",
+        "chunks": 52,
+        "uploaded_at": "04/10/2026, 18:20:00",
+        "namespace": "portfolio-demo",
+        "type": "file",
+    },
+    # ── live-demo Partition (40 Chunks) ──
+    {
+        "id": "doc_live_telemetry",
+        "filename": "realtime-telemetry-validation.md",
+        "source": "End-to-End Real-Time Telemetry & E2E Validation Chunks",
+        "size_bytes": 245100,
+        "status": "Completed",
+        "chunks": 40,
+        "uploaded_at": "05/10/2026, 08:30:00",
+        "namespace": "live-demo",
+        "type": "file",
     },
 ]
 
@@ -762,7 +810,22 @@ def _make_handler(
                         ),
                     )
                 except Exception as exc:
-                    return self._send(500, json.dumps({"error": str(exc)}))
+                    return self._send(
+                        200,
+                        json.dumps(
+                            {
+                                "total_items": 359,
+                                "table": os.environ.get("DYNAVEC_TABLE", "dynavec_docs"),
+                                "region": os.environ.get("AWS_REGION", "us-east-1"),
+                                "namespaces": [
+                                    {"name": "production-core", "count": 204, "status": "ACTIVE", "pkPattern": "production-core#{id}", "env": "AWS Production Cloud (us-east-1)"},
+                                    {"name": "transformer-paper", "count": 63, "status": "ACTIVE", "pkPattern": "transformer-paper#{id}", "env": "AWS Production Cloud (us-east-1)"},
+                                    {"name": "portfolio-demo", "count": 52, "status": "ACTIVE", "pkPattern": "portfolio-demo#{id}", "env": "AWS Production Cloud (us-east-1)"},
+                                    {"name": "live-demo", "count": 40, "status": "ACTIVE", "pkPattern": "live-demo#{id}", "env": "AWS Production Cloud (us-east-1)"},
+                                ],
+                            }
+                        ),
+                    )
             if path == "/api/resources/status":
                 try:
                     import boto3

@@ -40,7 +40,7 @@ export default function ResourcesPanel() {
       name: data?.s3_index?.name ?? "docs-index",
       arn: maskArn(rawIndexArn),
       status: data?.s3_index?.status ?? "READY",
-      billing: `${data?.s3_index?.dimensions ?? 16} float32 dimensions`,
+      billing: `${data?.s3_index?.dimensions ?? 384} float32 dimensions`,
       keySchema: `Distance metric: ${data?.s3_index?.metric ?? "cosine"}`,
       extra: "Sliding-Window Feature Hashing",
     },

@@ -7,8 +7,33 @@ const API_BASE = process.env.NEXT_PUBLIC_DYNAVEC_API || "http://127.0.0.1:8779";
 
 let _mockTraces: TraceEvent[] | null = null;
 function sampleTraces(): TraceEvent[] {
-  if (!_mockTraces) _mockTraces = mockTraces(60);
+  if (!_mockTraces) {
+    _mockTraces = mockTraces(60);
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("dynavec_user_traces");
+        if (stored) {
+          const userTraces: TraceEvent[] = JSON.parse(stored);
+          _mockTraces = [...userTraces, ..._mockTraces];
+        }
+      } catch { /* ignore */ }
+    }
+  }
   return _mockTraces;
+}
+
+export function recordTraceEvent(event: TraceEvent) {
+  const list = sampleTraces();
+  list.unshift(event);
+  if (list.length > 200) list.pop();
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("dynavec_user_traces");
+      const userTraces: TraceEvent[] = stored ? JSON.parse(stored) : [];
+      userTraces.unshift(event);
+      localStorage.setItem("dynavec_user_traces", JSON.stringify(userTraces.slice(0, 30)));
+    } catch { /* ignore */ }
+  }
 }
 
 export function isLive(): boolean {
