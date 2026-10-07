@@ -1591,15 +1591,6 @@ class Dynavec:
                 except Exception as exc:
                     raise ValueError(f"Invalid JSON at line {line_no}: {exc}") from exc
 
-                # if "id" not in obj or "vector" not in obj:
-                #     raise ValueError(f"Missing required 'id' or 'vector' field at line {line_no}")
-
-                # doc = Document(
-                #     id=str(obj["id"]),
-                #     vector=obj["vector"],
-                #     text=obj.get("text"),
-                #     metadata=obj.get("metadata") or {},
-                # )
                 if not isinstance(obj, dict):
                     raise ValueError(f"Line {line_no}: expected JSON object")
 
